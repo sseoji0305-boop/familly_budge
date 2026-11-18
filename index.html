@@ -1,0 +1,2233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>지현 & 민주 | 스마트 가계 재무·부채 통합 관리</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans KR"', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            overflow-x: hidden;
+            width: 100%;
+        }
+        .tab-active {
+            background-color: #eef2ff;
+            color: #4f46e5;
+            font-weight: 700;
+            border-color: #c7d2fe;
+        }
+        .card-shadow {
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        .animate-shake {
+            animation: shake 0.35s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- ========================================================= -->
+    <!-- 4자리 PIN 비밀번호 잠금 화면 (초기 비밀번호: 0305) -->
+    <!-- ========================================================= -->
+    <div id="pinLockOverlay" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
+        <div id="pinModalBox" class="bg-white rounded-3xl max-w-sm w-full p-7 shadow-2xl text-center">
+            <div class="w-14 h-14 rounded-2xl bg-indigo-600 text-white font-bold text-xl flex items-center justify-center mx-auto mb-4 shadow-md">
+                JM
+            </div>
+            <h2 class="text-xl font-bold text-slate-900">지현 & 민주 가계 컨트롤타워</h2>
+            <p class="text-xs text-slate-500 mt-1">부부 전용 공간입니다. 4자리 PIN 번호를 입력하세요.</p>
+
+            <!-- PIN 점 표시 -->
+            <div class="flex justify-center gap-4 my-6" id="pinDotsContainer">
+                <span class="w-4 h-4 rounded-full border-2 border-indigo-600 bg-transparent transition-all" id="dot-0"></span>
+                <span class="w-4 h-4 rounded-full border-2 border-indigo-600 bg-transparent transition-all" id="dot-1"></span>
+                <span class="w-4 h-4 rounded-full border-2 border-indigo-600 bg-transparent transition-all" id="dot-2"></span>
+                <span class="w-4 h-4 rounded-full border-2 border-indigo-600 bg-transparent transition-all" id="dot-3"></span>
+            </div>
+
+            <p id="pinErrorMsg" class="text-xs text-rose-600 font-semibold h-4 mb-3"></p>
+
+            <!-- 숫자 키패드 -->
+            <div class="grid grid-cols-3 gap-2.5 max-w-[260px] mx-auto select-none">
+                <button type="button" onclick="pressPinDigit('1')" class="py-3.5 text-lg font-bold bg-slate-100 hover:bg-indigo-50 active:bg-indigo-100 rounded-xl text-slate-800 transition">1</button>
+                <button type="button" onclick="pressPinDigit('2')" class="py-3.5 text-lg font-bold bg-slate-100 hover:bg-indigo-50 active:bg-indigo-100 rounded-xl text-slate-800 transition">2</button>
+                <button type="button" onclick="pressPinDigit('3')" class="py-3.5 text-lg font-bold bg-slate-100 hover:bg-indigo-50 active:bg-indigo-100 rounded-xl text-slate-800 transition">3</button>
+                <button type="button" onclick="pressPinDigit('4')" class="py-3.5 text-lg font-bold bg-slate-100 hover:bg-indigo-50 active:bg-indigo-100 rounded-xl text-slate-800 transition">4</button>
+                <button type="button" onclick="pressPinDigit('5')" class="py-3.5 text-lg font-bold bg-slate-100 hover:bg-indigo-50 active:bg-indigo-100 rounded-xl text-slate-800 transition">5</button>
+                <button type="button" onclick="pressPinDigit('6')" class="py-3.5 text-lg font-bold bg-slate-100 hover:bg-indigo-50 active:bg-indigo-100 rounded-xl text-slate-800 transition">6</button>
+                <button type="button" onclick="pressPinDigit('7')" class="py-3.5 text-lg font-bold bg-slate-100 hover:bg-indigo-50 active:bg-indigo-100 rounded-xl text-slate-800 transition">7</button>
+                <button type="button" onclick="pressPinDigit('8')" class="py-3.5 text-lg font-bold bg-slate-100 hover:bg-indigo-50 active:bg-indigo-100 rounded-xl text-slate-800 transition">8</button>
+                <button type="button" onclick="pressPinDigit('9')" class="py-3.5 text-lg font-bold bg-slate-100 hover:bg-indigo-50 active:bg-indigo-100 rounded-xl text-slate-800 transition">9</button>
+                <button type="button" onclick="clearPinInput()" class="py-3.5 text-xs font-bold bg-slate-50 hover:bg-slate-200 rounded-xl text-slate-500 transition">전체지움</button>
+                <button type="button" onclick="pressPinDigit('0')" class="py-3.5 text-lg font-bold bg-slate-100 hover:bg-indigo-50 active:bg-indigo-100 rounded-xl text-slate-800 transition">0</button>
+                <button type="button" onclick="backspacePinDigit()" class="py-3.5 text-sm font-bold bg-slate-50 hover:bg-slate-200 rounded-xl text-slate-600 transition">⌫</button>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-5">초기 비밀번호: <span class="font-bold text-slate-600">0305</span> · 키보드 숫자 입력 가능</p>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- 상단 헤더 (클라우드 실시간 연동 배지 + 모바일 최적화) -->
+    <!-- ========================================================= -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between py-3 sm:py-4 gap-3">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-sm shrink-0">
+                            JM
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <h1 class="text-base sm:text-xl font-bold text-slate-900 truncate">지현 & 민주 가계 재무 컨트롤타워</h1>
+                                <span id="cloudSyncBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                                    🟡 클라우드 동기화 중...
+                                </span>
+                            </div>
+                            <p class="text-[11px] sm:text-xs text-slate-500 truncate">기준일: <span id="headerBaseDate">2026-07-05</span> · 부부 기기 실시간 자동 동기화</p>
+                        </div>
+                    </div>
+                    <!-- 잠금 버튼 (모바일 우측 상단) -->
+                    <button onclick="lockAppNow()" class="md:hidden px-2.5 py-2 text-xs font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 shrink-0" title="화면 잠금">
+                        🔒 잠금
+                    </button>
+                </div>
+
+                <!-- 데이터 백업 / 불러오기 / 초기화 버튼 그룹 -->
+                <div class="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2">
+                    <button onclick="exportDataJSON()" class="inline-flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                        <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>데이터 백업 (JSON)</span>
+                    </button>
+                    <label class="inline-flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 cursor-pointer transition">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        <span>데이터 불러오기</span>
+                        <input type="file" id="importJsonInput" accept=".json" class="hidden" onchange="importDataJSON(event)">
+                    </label>
+                    <button onclick="confirmResetData()" class="inline-flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition">
+                        <span>초기 데이터 리셋</span>
+                    </button>
+                    <button onclick="lockAppNow()" class="hidden md:inline-flex items-center gap-1 px-2.5 py-2 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">
+                        🔒 잠금
+                    </button>
+                </div>
+            </div>
+
+            <!-- 모바일 2x2 그리드 / PC 4열 가로 바 네비게이션 탭 -->
+            <nav class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 pb-3 pt-1 border-t border-slate-100 text-xs sm:text-sm">
+                <button onclick="switchTab('overview')" id="tab-overview" class="py-2.5 px-2 sm:px-3 rounded-lg border border-transparent text-center tab-active transition">
+                    📊 재무 대시보드
+                </button>
+                <button onclick="switchTab('debt')" id="tab-debt" class="py-2.5 px-2 sm:px-3 rounded-lg border border-slate-200/60 text-center text-slate-600 hover:bg-slate-50 transition">
+                    💳 부채 상환 시뮬레이터
+                </button>
+                <button onclick="switchTab('transactions')" id="tab-transactions" class="py-2.5 px-2 sm:px-3 rounded-lg border border-slate-200/60 text-center text-slate-600 hover:bg-slate-50 transition">
+                    📄 명세서 업로드 · 거래내역
+                </button>
+                <button onclick="switchTab('budget')" id="tab-budget" class="py-2.5 px-2 sm:px-3 rounded-lg border border-slate-200/60 text-center text-slate-600 hover:bg-slate-50 transition">
+                    ⚙️ 소득 · 고정지출 · 계좌
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- 알림 토스트 메시지 영역 -->
+    <div id="toastContainer" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-5 z-50 flex flex-col gap-2"></div>
+
+    <!-- 커스텀 확인 모달 -->
+    <div id="confirmModal" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <h3 id="modalTitle" class="text-lg font-bold text-slate-900 mb-2">확인</h3>
+            <p id="modalMessage" class="text-sm text-slate-600 mb-6"></p>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">취소</button>
+                <button id="modalConfirmBtn" class="px-4 py-2 text-sm font-semibold text-white bg-rose-600 rounded-lg hover:bg-rose-700">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 콘텐츠 컨테이너 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6">
+
+        <!-- 초기 빈 데이터 안내 배너 (데이터가 0원일 때만 표시) -->
+        <div id="emptyDataGuideBanner" class="hidden mb-5 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="text-xs sm:text-sm text-amber-900">
+                <strong>현재 초기화된 상태(0원)입니다.</strong> 기존 정리해 두신 가계부 내역을 한 번에 채우려면 상단 <strong>[데이터 불러오기]</strong> 버튼을 눌러 <code>jm_backup.json</code> 파일을 선택하세요. (업로드 즉시 부부 기기에 동시 반영됩니다.)
+            </div>
+            <label class="inline-flex items-center justify-center px-3.5 py-2 text-xs font-bold text-white bg-amber-600 rounded-lg hover:bg-amber-700 cursor-pointer shrink-0">
+                📂 jm_backup.json 바로 불러오기
+                <input type="file" accept=".json" class="hidden" onchange="importDataJSON(event)">
+            </label>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- TAB 1: 재무 대시보드 (Overview) -->
+        <!-- ========================================================= -->
+        <section id="view-overview" class="space-y-5 sm:space-y-6">
+            <!-- 기준 월 선택 및 옵션 바 -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 card-shadow flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center justify-between sm:justify-start gap-3">
+                    <label class="text-xs sm:text-sm font-bold text-slate-700">분석 기준 월:</label>
+                    <input type="month" id="overviewMonthSelector" onchange="renderAll()" class="px-3 py-1.5 text-xs sm:text-sm border border-slate-300 rounded-lg font-semibold text-indigo-700 bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="includeBonusToggle" onchange="toggleBonusInclusion()" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                    <span class="text-xs sm:text-sm font-medium text-slate-700">기타수당(월환산분) 월 총소득에 포함</span>
+                </label>
+            </div>
+
+            <!-- 핵심 KPI 카드 6개 (총 자산, 총 부채, 순자산 / 월 총소득, 월 고정지출+저축, 월 잉여현금흐름) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                <!-- KPI 1: 총 자산 -->
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-semibold text-slate-500">총 자산 (부동산 + 금융)</span>
+                        <span class="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[11px] font-bold">재무상태</span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-bold text-slate-900" id="kpiTotalAssets">0원</div>
+                    <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">금융자산 (부동산 제외):</span>
+                        <span class="font-bold text-indigo-600" id="kpiFinancialAssets">0원</span>
+                    </div>
+                </div>
+
+                <!-- KPI 2: 총 부채 -->
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-semibold text-slate-500">총 부채 잔액</span>
+                        <span class="px-2 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[11px] font-bold">부채현황</span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-bold text-rose-600" id="kpiTotalDebt">0원</div>
+                    <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">전세 · 마통 부채:</span>
+                        <span class="font-bold text-slate-800" id="kpiNonMortgageDebt">0원</span>
+                    </div>
+                </div>
+
+                <!-- KPI 3: 순자산 -->
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-semibold text-slate-500">순자산 (총자산 - 총부채)</span>
+                        <span class="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md text-[11px] font-bold">순가치</span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-bold text-emerald-600" id="kpiNetWorth">0원</div>
+                    <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">순금융자산 (금융-비담보부채):</span>
+                        <span class="font-bold text-slate-700" id="kpiFinancialNetWorth">0원</span>
+                    </div>
+                </div>
+
+                <!-- KPI 4: 월 총소득 -->
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-semibold text-slate-500">월 총소득 (세후 기준)</span>
+                        <span class="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[11px] font-bold">유입현금</span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-bold text-indigo-700" id="kpiMonthlyIncome">0원</div>
+                    <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">기타수당 월환산액:</span>
+                        <span class="font-semibold text-slate-700" id="kpiBonusIncome">0원</span>
+                    </div>
+                </div>
+
+                <!-- KPI 5: 월 고정지출 + 정기저축 + 변동지출 -->
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-semibold text-slate-500">월 고정지출 + 저축 (+변동)</span>
+                        <span class="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-md text-[11px] font-bold">유출현금</span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-bold text-slate-900" id="kpiMonthlyOutflow">0원</div>
+                    <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">고정 <span id="kpiFixedSub">0원</span> · 저축 <span id="kpiSavingsSub">0원</span></span>
+                        <span class="font-semibold text-rose-600">변동 <span id="kpiVarSub">0원</span></span>
+                    </div>
+                </div>
+
+                <!-- KPI 6: 월 잉여현금흐름 -->
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-semibold text-slate-500">월 잉여현금흐름 (순이익)</span>
+                        <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md text-[11px] font-bold">가용여력</span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-bold text-emerald-600" id="kpiMonthlyProfit">0원</div>
+                    <div class="mt-2 pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
+                        <span class="text-slate-500">연간 예상 잉여현금 (×12):</span>
+                        <span class="font-bold text-emerald-700" id="kpiAnnualProfit">0원</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 자산 vs 부채 구성 비교 & 부채 탕감 요약 배너 -->
+            <div class="bg-gradient-to-r from-slate-800 to-indigo-900 text-white rounded-2xl p-4 sm:p-5 shadow-sm">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-700">
+                    <div class="pt-1 sm:pt-0">
+                        <div class="text-xs text-slate-300">부채 비율 (총부채 ÷ 총자산)</div>
+                        <div class="text-lg font-bold mt-0.5 text-amber-300" id="bannerDebtRatio">0%</div>
+                        <div class="text-xs text-slate-300 mt-0.5" id="bannerAssetVsDebtText">자산 0원 / 부채 0원</div>
+                    </div>
+                    <div class="pt-3 sm:pt-0 sm:pl-4">
+                        <div class="text-xs text-slate-300">비담보 부채(전세+마통) 완제 예상</div>
+                        <div class="text-lg font-bold mt-0.5 text-emerald-300" id="bannerPayoffMonths">0개월 후</div>
+                        <div class="text-xs text-slate-300 mt-0.5" id="bannerPayoffDate">예상 시점: -</div>
+                    </div>
+                    <div class="pt-3 sm:pt-0 sm:pl-4">
+                        <div class="text-xs text-slate-300">시뮬레이터 추가 상환 설정</div>
+                        <div class="text-lg font-bold mt-0.5 text-indigo-300" id="bannerExtraDebtPay">0원 / 월</div>
+                        <div class="text-xs text-slate-300 mt-0.5">부채 상환 시뮬레이터 탭에서 비율 조절</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 차트 영역: 지현 vs 민주 지출 비교 & 카테고리별 지출 비중 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="mb-4">
+                        <h3 class="text-base font-bold text-slate-900">지현 vs 민주 월별 지출 비교</h3>
+                        <p class="text-xs text-slate-500">고정지출 + 변동지출 합산 기준</p>
+                    </div>
+                    <div class="h-56 sm:h-64 w-full">
+                        <canvas id="ownerComparisonChart"></canvas>
+                    </div>
+                    <div id="ownerSummaryCards" class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100 text-center text-xs"></div>
+                </div>
+
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="mb-4">
+                        <h3 class="text-base font-bold text-slate-900">카테고리별 지출 분석</h3>
+                        <p class="text-xs text-slate-500">고정지출과 변동지출 통합 소비 비중</p>
+                    </div>
+                    <div class="h-56 sm:h-64 w-full">
+                        <canvas id="categoryDoughnutChart"></canvas>
+                    </div>
+                    <div id="categoryLegendList" class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 mt-4 pt-4 border-t border-slate-100 text-xs"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 2: 부채 상환 시뮬레이터 (Debt Payoff Simulator) -->
+        <!-- ========================================================= -->
+        <section id="view-debt" class="hidden space-y-5">
+            <!-- 상단 시뮬레이션 컨트롤 배너 -->
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-700">눈덩이 / 고금리 우선 상환 계산기</span>
+                        <h2 class="text-lg sm:text-xl font-bold text-slate-900 mt-2">부채별 탕감 현황 및 완제 타임라인 시뮬레이터</h2>
+                        <p class="text-xs text-slate-500 mt-1">월 잉여현금흐름 중 부채 추가 상환에 투입할 비율을 조절해 완제 개월 수와 절감 이자를 확인하세요.</p>
+                    </div>
+                    
+                    <!-- 잉여금 추가 상환 시뮬레이션 슬라이더 -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 w-full lg:w-96 shrink-0">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold text-slate-700">월 잉여현금 추가 상환 투입 비율</label>
+                            <span id="surplusAllocLabel" class="text-xs sm:text-sm font-bold text-indigo-600">100% (0원/월)</span>
+                        </div>
+                        <input type="range" id="surplusAllocSlider" min="0" max="100" step="5" value="100" oninput="updateSurplusSlider(this.value)" class="w-full accent-indigo-600 cursor-pointer">
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>0% (기본납입만)</span>
+                            <span>50%</span>
+                            <span>100% (전액상환)</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-1.5">※ 상환 우선순위(1순위→2순위) 및 고금리 순서로 자동 집중 상환됩니다.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 부채별 개별 카드 그리드 (모든 금액 쉼표 포맷 적용) -->
+            <div id="debtCardsContainer" class="grid grid-cols-1 lg:grid-cols-3 gap-5"></div>
+
+            <!-- 전체 부채 통합 상환 스케줄 요약 테이블 -->
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">전체 부채 통합 상환 스케줄 및 이자 절감 요약</h3>
+                        <p class="text-xs text-slate-500">추가 상환 적용 시 기본 납입 대비 총 절감되는 이자 비용까지 자동 산출합니다.</p>
+                    </div>
+                    <button onclick="addNewDebt()" class="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">+ 새 부채 추가</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[640px]">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-xs text-slate-500 bg-slate-50">
+                                <th class="p-2.5">순위</th>
+                                <th class="p-2.5">부채명</th>
+                                <th class="p-2.5 text-right">현재 잔액</th>
+                                <th class="p-2.5 text-right">연 이자율</th>
+                                <th class="p-2.5 text-right">월 기본 상환액</th>
+                                <th class="p-2.5 text-right">추가 투입액</th>
+                                <th class="p-2.5 text-right">예상 완제 개월</th>
+                                <th class="p-2.5 text-right">목표 완제 시점</th>
+                                <th class="p-2.5 text-right">절감 예상 이자</th>
+                            </tr>
+                        </thead>
+                        <tbody id="debtSummaryTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 3: 명세서 업로드 · 거래내역 (Transactions) -->
+        <!-- ========================================================= -->
+        <section id="view-transactions" class="hidden space-y-5">
+            <!-- PDF 업로드 카드 -->
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-base sm:text-lg font-bold text-slate-900">카드 · 계좌 사용내역서 PDF 자동 분석</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">PDF 명세서를 올리면 날짜·가맹점·금액을 추출해 카테고리별로 자동 분류합니다.</p>
+                    </div>
+                    <button onclick="simulateSamplePdfUpload()" class="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition">
+                        ✨ 샘플 명세서 테스트
+                    </button>
+                </div>
+
+                <!-- 업로드 메타데이터 선택 -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">1. 사용자 (소유자)</label>
+                        <select id="pdfOwnerSelect" class="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg">
+                            <option value="지현">지현</option>
+                            <option value="민주">민주</option>
+                            <option value="공동">공동 (부부공용)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">2. 결제수단 (카드 / 계좌)</label>
+                        <select id="pdfMethodSelect" class="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">3. 귀속 월 (YYYY-MM)</label>
+                        <input type="month" id="pdfTargetMonth" class="w-full px-3 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-lg">
+                    </div>
+                </div>
+
+                <!-- 드래그 앤 드롭 영역 -->
+                <div id="pdfDropZone" class="border-2 border-dashed border-indigo-300 rounded-2xl p-6 sm:p-8 text-center bg-indigo-50/30 hover:bg-indigo-50/70 transition cursor-pointer">
+                    <input type="file" id="pdfFileInput" accept=".pdf" class="hidden" onchange="handlePdfFileSelect(event)">
+                    <div class="w-11 h-11 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-2.5">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                    </div>
+                    <p class="text-xs sm:text-sm font-bold text-slate-800">터치하여 카드/계좌 명세서 PDF 파일 선택</p>
+                    <p class="text-[11px] text-slate-500 mt-1">신한, 우리, 현대, 삼성, 하나, 카카오뱅크 등 PDF 명세서 지원</p>
+                    <div id="pdfLoadingStatus" class="hidden mt-3 text-xs font-semibold text-indigo-600 animate-pulse">
+                        PDF 텍스트 분석 및 카테고리 자동 분류 중...
+                    </div>
+                </div>
+
+                <!-- PDF 파싱 결과 미리보기 -->
+                <div id="pdfPreviewSection" class="hidden mt-5 pt-5 border-t border-slate-200">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+                        <div>
+                            <h3 class="text-sm sm:text-base font-bold text-indigo-900">추출된 거래내역 검수 (<span id="parsedCount">0</span>건)</h3>
+                            <p class="text-xs text-slate-500">분류를 확인한 뒤 [가계부에 일괄 반영]을 누르세요.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="cancelPdfPreview()" class="flex-1 sm:flex-none px-3 py-2 text-xs font-semibold text-slate-600 bg-slate-100 rounded-lg">취소</button>
+                            <button onclick="confirmParsedTransactions()" class="flex-1 sm:flex-none px-4 py-2 text-xs font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
+                                ✓ 가계부에 일괄 반영
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-80 border border-slate-200 rounded-xl">
+                        <table class="w-full text-left border-collapse text-xs min-w-[540px]">
+                            <thead class="bg-slate-100 sticky top-0 text-slate-600">
+                                <tr>
+                                    <th class="p-2">날짜</th>
+                                    <th class="p-2">소유자</th>
+                                    <th class="p-2">결제수단</th>
+                                    <th class="p-2">가맹점 / 적요</th>
+                                    <th class="p-2">자동분류 카테고리</th>
+                                    <th class="p-2 text-right">금액</th>
+                                    <th class="p-2 text-center">제외</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pdfPreviewTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 수기 단건 입력 바 (천 단위 쉼표 + 원 단위 적용) -->
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 card-shadow">
+                <h3 class="text-sm font-bold text-slate-900 mb-3">변동지출 · 부채상환 단건 직접 입력</h3>
+                <form onsubmit="addManualTransaction(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
+                    <input type="date" id="manualDate" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg">
+                    <select id="manualOwner" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg">
+                        <option value="지현">지현</option>
+                        <option value="민주">민주</option>
+                        <option value="공동">공동</option>
+                    </select>
+                    <select id="manualMethod" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg"></select>
+                    <select id="manualCategory" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg">
+                        <option value="식비/생활비">식비/생활비</option>
+                        <option value="차량/주유">차량/주유</option>
+                        <option value="주거/관리비">주거/관리비</option>
+                        <option value="통신/구독">통신/구독</option>
+                        <option value="보험/의료">보험/의료</option>
+                        <option value="반려동물(탱이)">반려동물(탱이)</option>
+                        <option value="경조사/선물">경조사/선물</option>
+                        <option value="부채상환(마통)">부채상환(마통 추가상환)</option>
+                        <option value="개인용돈">개인용돈</option>
+                    </select>
+                    <input type="text" id="manualDesc" placeholder="내용 (예: 코스트코 장보기)" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg">
+                    <div class="flex gap-2">
+                        <div class="relative flex-1">
+                            <input type="text" inputmode="numeric" id="manualAmount" placeholder="0" required oninput="formatCurrencyInputLive(this)" class="w-full pl-3 pr-7 py-2 text-right text-xs font-bold border border-slate-300 rounded-lg">
+                            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">원</span>
+                        </div>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shrink-0">추가</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 저장된 거래내역 필터 및 목록 -->
+            <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                <div class="flex flex-col gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">등록된 변동지출 · 사용내역 장부</h3>
+                        <p class="text-xs text-slate-500">필터링 합계: <span id="filteredTxTotal" class="font-bold text-indigo-600">0원</span> (<span id="filteredTxCount">0</span>건)</p>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <input type="month" id="filterMonth" onchange="renderTransactionTable()" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg">
+                        <select id="filterOwner" onchange="renderTransactionTable()" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg">
+                            <option value="ALL">전체 사용자</option>
+                            <option value="지현">지현</option>
+                            <option value="민주">민주</option>
+                            <option value="공동">공동</option>
+                        </select>
+                        <select id="filterMethod" onchange="renderTransactionTable()" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg">
+                            <option value="ALL">전체 카드/계좌</option>
+                        </select>
+                        <select id="filterCategory" onchange="renderTransactionTable()" class="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg">
+                            <option value="ALL">전체 카테고리</option>
+                            <option value="식비/생활비">식비/생활비</option>
+                            <option value="차량/주유">차량/주유</option>
+                            <option value="주거/관리비">주거/관리비</option>
+                            <option value="통신/구독">통신/구독</option>
+                            <option value="보험/의료">보험/의료</option>
+                            <option value="반려동물(탱이)">반려동물(탱이)</option>
+                            <option value="경조사/선물">경조사/선물</option>
+                            <option value="부채상환(마통)">부채상환(마통)</option>
+                            <option value="개인용돈">개인용돈</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[540px]">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-xs text-slate-500 bg-slate-50">
+                                <th class="p-2.5">날짜</th>
+                                <th class="p-2.5">소유자</th>
+                                <th class="p-2.5">결제수단</th>
+                                <th class="p-2.5">사용처 / 내용</th>
+                                <th class="p-2.5">카테고리</th>
+                                <th class="p-2.5 text-right">금액</th>
+                                <th class="p-2.5 text-center">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- TAB 4: 소득 · 고정지출 · 계좌 · PIN 설정 (모든 숫자 쉼표+원 포맷) -->
+        <!-- ========================================================= -->
+        <section id="view-budget" class="hidden space-y-5">
+            <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="text-xs text-indigo-900">
+                    <strong>실시간 클라우드 연동:</strong> 아래 금액을 수정하면 천 단위 쉼표(<code>,</code>)가 자동 표시되며, 지현·민주 기기에 즉시 동기화됩니다.
+                </div>
+                <span class="text-xs font-bold text-indigo-700">자동 저장 및 동기화됨 ✓</span>
+            </div>
+
+            <!-- 1. 월 소득 및 보유 자산 설정 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <!-- 월 소득 설정 -->
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-bold text-slate-900">월 소득 설정 (세후 기준)</h3>
+                        <button onclick="addIncomeItem()" class="px-2.5 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100">+ 소득 추가</button>
+                    </div>
+                    <div id="incomeListContainer" class="space-y-2.5"></div>
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex justify-between text-sm font-bold">
+                        <span>정기 월급여 합계:</span>
+                        <span class="text-indigo-600" id="setupRegularIncomeTotal">0원</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>기타수당 포함 월환산 합계:</span>
+                        <span id="setupTotalIncomeWithBonus">0원</span>
+                    </div>
+                </div>
+
+                <!-- 보유 자산 현황 -->
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-bold text-slate-900">보유 자산 현황 (재무상태표)</h3>
+                        <button onclick="addAssetItem()" class="px-2.5 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100">+ 자산 추가</button>
+                    </div>
+                    <div id="assetListContainer" class="space-y-2.5 max-h-80 overflow-y-auto pr-1"></div>
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex justify-between text-sm font-bold">
+                        <span>총 자산 합계:</span>
+                        <span class="text-emerald-600" id="setupTotalAssets">0원</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 월 고정지출 & 월 정기저축 설정 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <!-- 월 고정지출 -->
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">월 고정 지출 내역</h3>
+                            <p class="text-xs text-slate-500">매달 고정적으로 빠져나가는 지출</p>
+                        </div>
+                        <button onclick="addFixedExpenseItem()" class="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">+ 고정지출</button>
+                    </div>
+                    <div id="fixedExpenseListContainer" class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1"></div>
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex justify-between text-sm font-bold">
+                        <span>월 고정지출 합계:</span>
+                        <span class="text-rose-600" id="setupFixedExpenseTotal">0원</span>
+                    </div>
+                </div>
+
+                <!-- 월 정기 저축 · 투자 배분 -->
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">월 정기 저축 · 투자 배분</h3>
+                            <p class="text-xs text-slate-500">청약, 청년도약, 경조사/비상금 적립 등</p>
+                        </div>
+                        <button onclick="addSavingsItem()" class="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">+ 저축추가</button>
+                    </div>
+                    <div id="savingsListContainer" class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1"></div>
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex justify-between text-sm font-bold">
+                        <span>월 정기저축 합계:</span>
+                        <span class="text-emerald-600" id="setupSavingsTotal">0원</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 보유 계좌 및 신용카드 관리 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <!-- 계좌 목록 -->
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-bold text-slate-900">보유 계좌 목록</h3>
+                        <button onclick="addAccountItem()" class="px-2.5 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100">+ 계좌 추가</button>
+                    </div>
+                    <div id="accountListContainer" class="space-y-2 max-h-80 overflow-y-auto"></div>
+                </div>
+
+                <!-- 신용카드 목록 -->
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-bold text-slate-900">보유 신용·복지카드 목록</h3>
+                        <button onclick="addCardItem()" class="px-2.5 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100">+ 카드 추가</button>
+                    </div>
+                    <div id="cardListContainer" class="space-y-2 max-h-80 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <!-- 4. 기준일 및 접속 PIN 비밀번호 변경 설정 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                    <h3 class="text-base font-bold text-slate-900 mb-1">📅 가계 재무 기준일 설정</h3>
+                    <p class="text-xs text-slate-500 mb-4">상단 헤더에 표시되는 자산·부채 산정 기준 날짜입니다.</p>
+                    <div class="flex items-center gap-2.5 max-w-sm">
+                        <input type="date" id="baseDateInput" onchange="updateBaseDate(this.value)" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg">
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
+                    <h3 class="text-base font-bold text-slate-900 mb-1">🔒 접속 잠금 비밀번호(PIN) 변경</h3>
+                    <p class="text-xs text-slate-500 mb-4">부부 두 분이 함께 사용할 4자리 숫자 비밀번호를 변경할 수 있습니다. (초기 기본값: 0305)</p>
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-md">
+                        <input type="password" id="newPinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="새 비밀번호 4자리 숫자" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg">
+                        <button onclick="changeAppPin()" class="px-4 py-2 text-xs font-bold text-white bg-slate-800 rounded-lg hover:bg-slate-900">비밀번호 저장</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 gap-2 text-center">
+            <span>지현 & 민주 전용 가계 재무 컨트롤타워 · Firebase 클라우드 실시간 동기화</span>
+            <span>모든 입력 금액은 자동으로 천 단위 쉼표(,) 및 원 단위로 표시됩니다.</span>
+        </div>
+    </footer>
+
+    <!-- ========================================================= -->
+    <!-- APPLICATION LOGIC (Firebase v10 Modular SDK + UI) -->
+    <!-- ========================================================= -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+
+        // =========================================================
+        // 1. Firebase 실시간 데이터베이스 연결 설정 (지현 님 전용 프로젝트)
+        // =========================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPO-U_9N7T-v7lu4EcI1uI6U7SR7_e5B4",
+            authDomain: "jm-budget-1f459.firebaseapp.com",
+            databaseURL: "https://jm-budget-1f459-default-rtdb.firebaseio.com",
+            projectId: "jm-budget-1f459",
+            storageBucket: "jm-budget-1f459.firebasestorage.app",
+            messagingSenderId: "605014653252",
+            appId: "1:605014653252:web:9466e33aa0a301fca2ff11"
+        };
+
+        const CLOUD_DB_PATH = 'jm_family_0305';
+        const STORAGE_KEY = 'jm_household_finance_v3';
+        const PIN_STORAGE_KEY = 'jm_household_pin_v1';
+        const SESSION_UNLOCK_KEY = 'jm_household_unlocked';
+        const DEFAULT_PIN = '0305';
+
+        let db = null;
+        let familyDataRef = null;
+        let isCloudReady = false;
+        let isApplyingRemoteUpdate = false;
+
+        function setCloudBadgeStatus(status) {
+            const badge = document.getElementById('cloudSyncBadge');
+            if (!badge) return;
+            if (status === 'connected') {
+                badge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap';
+                badge.textContent = '🟢 클라우드 실시간 연동됨';
+            } else if (status === 'syncing') {
+                badge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap';
+                badge.textContent = '🟡 클라우드 동기화 중...';
+            } else {
+                badge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap';
+                badge.textContent = '⚠️ 클라우드 연결 확인필요';
+            }
+        }
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getDatabase(app);
+            familyDataRef = ref(db, CLOUD_DB_PATH);
+        } catch (err) {
+            console.error('Firebase 초기화 오류:', err);
+            setCloudBadgeStatus('error');
+        }
+
+        // =========================================================
+        // 2. 초기 0원 상태 생성기 (외부 공개 코드 프라이버시 보호)
+        // =========================================================
+        function getZeroDefaultState() {
+            return {
+                pin: DEFAULT_PIN,
+                baseDate: "2026-07-05",
+                includeBonusInMonthly: false,
+                extraDebtRatio: 100,
+                incomes: [],
+                assets: [],
+                debts: [],
+                fixedExpenses: [],
+                savings: [],
+                accounts: [],
+                cards: [],
+                transactions: []
+            };
+        }
+
+        function normalizeState(rawObj) {
+            const base = getZeroDefaultState();
+            if (!rawObj || typeof rawObj !== 'object') return base;
+            return {
+                pin: rawObj.pin || DEFAULT_PIN,
+                baseDate: rawObj.baseDate || "2026-07-05",
+                includeBonusInMonthly: !!rawObj.includeBonusInMonthly,
+                extraDebtRatio: typeof rawObj.extraDebtRatio === 'number'
+                    ? rawObj.extraDebtRatio
+                    : (typeof rawObj.surplusAllocationPercent === 'number' ? rawObj.surplusAllocationPercent : 100),
+                incomes: Array.isArray(rawObj.incomes) ? rawObj.incomes : [],
+                assets: Array.isArray(rawObj.assets) ? rawObj.assets : [],
+                debts: Array.isArray(rawObj.debts) ? rawObj.debts : [],
+                fixedExpenses: Array.isArray(rawObj.fixedExpenses) ? rawObj.fixedExpenses : [],
+                savings: Array.isArray(rawObj.savings) ? rawObj.savings : [],
+                accounts: Array.isArray(rawObj.accounts) ? rawObj.accounts : [],
+                cards: Array.isArray(rawObj.cards) ? rawObj.cards : [],
+                transactions: Array.isArray(rawObj.transactions) ? rawObj.transactions : []
+            };
+        }
+
+        let appState = loadLocalState();
+        let parsedPdfBuffer = [];
+        let charts = { owner: null, category: null };
+
+        function loadLocalState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    return normalizeState(JSON.parse(raw));
+                }
+            } catch (e) {
+                console.error('로컬스토리지 로드 실패:', e);
+            }
+            return getZeroDefaultState();
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                if (appState.pin) {
+                    localStorage.setItem(PIN_STORAGE_KEY, appState.pin);
+                }
+            } catch (e) {
+                showToast('로컬 저장 공간 오류가 발생했습니다.', 'error');
+            }
+
+            if (familyDataRef && !isApplyingRemoteUpdate) {
+                setCloudBadgeStatus('syncing');
+                set(familyDataRef, appState)
+                    .then(() => {
+                        setCloudBadgeStatus('connected');
+                    })
+                    .catch((err) => {
+                        console.error('Firebase 저장 오류:', err);
+                        setCloudBadgeStatus('error');
+                    });
+            }
+        }
+
+        // 실시간 클라우드 수신 리스너 (상대방 기기 변경사항 즉시 반영)
+        if (familyDataRef) {
+            onValue(familyDataRef, (snapshot) => {
+                isCloudReady = true;
+                setCloudBadgeStatus('connected');
+                const remoteData = snapshot.val();
+                if (remoteData) {
+                    isApplyingRemoteUpdate = true;
+                    appState = normalizeState(remoteData);
+                    try {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                        if (appState.pin) {
+                            localStorage.setItem(PIN_STORAGE_KEY, appState.pin);
+                        }
+                    } catch (e) {}
+
+                    // 현재 포커스된 텍스트 입력창이 있을 경우 커서 튐 방지를 위해 그 외 영역 갱신
+                    const activeTag = document.activeElement ? document.activeElement.tagName : '';
+                    const isTyping = activeTag === 'INPUT' || activeTag === 'SELECT';
+                    populatePaymentMethodDropdowns();
+                    if (!isTyping) {
+                        renderAll();
+                    } else {
+                        // 대시보드 숫자만 조용히 갱신
+                        const targetMonth = document.getElementById('overviewMonthSelector').value || new Date().toISOString().slice(0, 7);
+                        const metrics = calculateFinancialMetrics(targetMonth);
+                        renderOverviewKPIs(metrics);
+                    }
+                    isApplyingRemoteUpdate = false;
+                }
+            }, (error) => {
+                console.error('Firebase 수신 오류:', error);
+                setCloudBadgeStatus('error');
+            });
+        }
+
+        // =========================================================
+        // 3. 천 단위 쉼표(,) 포맷터 및 실시간 입력 핸들러
+        // =========================================================
+        function formatNumberComma(num) {
+            const n = Math.round(Number(num) || 0);
+            return n.toLocaleString('ko-KR');
+        }
+
+        function parseNumberComma(str) {
+            if (typeof str === 'number') return Math.round(str);
+            const cleaned = String(str || '').replace(/[^\d]/g, '');
+            return cleaned ? parseInt(cleaned, 10) : 0;
+        }
+
+        function formatKRW(num) {
+            return formatNumberComma(num) + '원';
+        }
+
+        function formatKoreanUnit(num) {
+            const n = Math.abs(Math.round(Number(num) || 0));
+            const sign = num < 0 ? '-' : '';
+            if (n >= 100000000) {
+                const uk = Math.floor(n / 100000000);
+                const man = Math.round((n % 100000000) / 10000);
+                return `${sign}${uk}억 ${man > 0 ? man.toLocaleString() + '만' : ''}원`;
+            } else if (n >= 10000) {
+                return `${sign}${Math.round(n / 10000).toLocaleString()}만원`;
+            }
+            return `${sign}${n.toLocaleString()}원`;
+        }
+
+        // 입력칸 타이핑 중 실시간 쉼표 포맷팅
+        window.formatCurrencyInputLive = function (inputEl) {
+            const rawDigits = inputEl.value.replace(/[^\d]/g, '');
+            if (!rawDigits) {
+                inputEl.value = '';
+                return;
+            }
+            const formatted = parseInt(rawDigits, 10).toLocaleString('ko-KR');
+            inputEl.value = formatted;
+        };
+
+        // 포커스 시 전체 선택으로 빠른 수정 지원
+        window.selectAllOnFocus = function (inputEl) {
+            setTimeout(() => inputEl.select(), 10);
+        };
+
+        // =========================================================
+        // 4. 4자리 PIN 잠금 화면 로직 (터치 + 키보드 숫자 지원)
+        // =========================================================
+        let currentPinEntry = '';
+
+        function initPinLock() {
+            const isUnlocked = sessionStorage.getItem(SESSION_UNLOCK_KEY) === 'true';
+            const overlay = document.getElementById('pinLockOverlay');
+            if (isUnlocked) {
+                overlay.classList.add('hidden');
+            } else {
+                overlay.classList.remove('hidden');
+                currentPinEntry = '';
+                updatePinDots();
+            }
+        }
+
+        window.pressPinDigit = function (digit) {
+            if (currentPinEntry.length >= 4) return;
+            currentPinEntry += digit;
+            document.getElementById('pinErrorMsg').textContent = '';
+            updatePinDots();
+
+            if (currentPinEntry.length === 4) {
+                setTimeout(verifyPinCode, 120);
+            }
+        };
+
+        window.backspacePinDigit = function () {
+            currentPinEntry = currentPinEntry.slice(0, -1);
+            updatePinDots();
+        };
+
+        window.clearPinInput = function () {
+            currentPinEntry = '';
+            document.getElementById('pinErrorMsg').textContent = '';
+            updatePinDots();
+        };
+
+        function updatePinDots() {
+            for (let i = 0; i < 4; i++) {
+                const dot = document.getElementById(`dot-${i}`);
+                if (!dot) continue;
+                if (i < currentPinEntry.length) {
+                    dot.classList.remove('bg-transparent');
+                    dot.classList.add('bg-indigo-600', 'scale-110');
+                } else {
+                    dot.classList.add('bg-transparent');
+                    dot.classList.remove('bg-indigo-600', 'scale-110');
+                }
+            }
+        }
+
+        function verifyPinCode() {
+            const savedPin = appState.pin || localStorage.getItem(PIN_STORAGE_KEY) || DEFAULT_PIN;
+            if (currentPinEntry === savedPin) {
+                sessionStorage.setItem(SESSION_UNLOCK_KEY, 'true');
+                document.getElementById('pinLockOverlay').classList.add('hidden');
+                showToast('잠금이 해제되었습니다.');
+            } else {
+                const box = document.getElementById('pinModalBox');
+                box.classList.remove('animate-shake');
+                void box.offsetWidth;
+                box.classList.add('animate-shake');
+                document.getElementById('pinErrorMsg').textContent = '비밀번호가 일치하지 않습니다. (초기값: 0305)';
+                currentPinEntry = '';
+                updatePinDots();
+            }
+        }
+
+        // 키보드 숫자 입력 지원 (잠금 화면 활성화 시)
+        document.addEventListener('keydown', (e) => {
+            const overlay = document.getElementById('pinLockOverlay');
+            if (!overlay || overlay.classList.contains('hidden')) return;
+            if (/^[0-9]$/.test(e.key)) {
+                window.pressPinDigit(e.key);
+            } else if (e.key === 'Backspace') {
+                window.backspacePinDigit();
+            } else if (e.key === 'Escape') {
+                window.clearPinInput();
+            }
+        });
+
+        window.lockAppNow = function () {
+            sessionStorage.removeItem(SESSION_UNLOCK_KEY);
+            currentPinEntry = '';
+            updatePinDots();
+            document.getElementById('pinErrorMsg').textContent = '';
+            document.getElementById('pinLockOverlay').classList.remove('hidden');
+        };
+
+        window.changeAppPin = function () {
+            const val = document.getElementById('newPinInput').value.trim();
+            if (!/^\d{4}$/.test(val)) {
+                showToast('비밀번호는 숫자 4자리로 입력해 주세요.', 'error');
+                return;
+            }
+            appState.pin = val;
+            localStorage.setItem(PIN_STORAGE_KEY, val);
+            document.getElementById('newPinInput').value = '';
+            saveState();
+            showToast('새 PIN 비밀번호가 저장 및 클라우드에 동기화되었습니다.');
+        };
+
+        window.updateBaseDate = function (val) {
+            if (!val) return;
+            appState.baseDate = val;
+            saveState();
+            renderAll();
+            showToast('기준일이 변경되었습니다.');
+        };
+
+        // =========================================================
+        // 5. 초기 실행 및 공통 UI 함수
+        // =========================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            initPinLock();
+
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            document.getElementById('overviewMonthSelector').value = currentMonth;
+            document.getElementById('pdfTargetMonth').value = currentMonth;
+            document.getElementById('filterMonth').value = currentMonth;
+            document.getElementById('manualDate').value = new Date().toISOString().slice(0, 10);
+            document.getElementById('includeBonusToggle').checked = !!appState.includeBonusInMonthly;
+            document.getElementById('surplusAllocSlider').value = appState.extraDebtRatio ?? 100;
+
+            populatePaymentMethodDropdowns();
+            renderAll();
+        });
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bg = type === 'error' ? 'bg-rose-600' : (type === 'info' ? 'bg-slate-800' : 'bg-emerald-600');
+            toast.className = `${bg} text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-lg transition-all duration-300 flex items-center justify-center sm:justify-start gap-2`;
+            toast.innerHTML = `<span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        window.switchTab = function (tabId) {
+            ['overview', 'debt', 'transactions', 'budget'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-${t}`);
+                btn.classList.remove('tab-active');
+                btn.classList.add('text-slate-600', 'border-slate-200/60');
+            });
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.add('tab-active');
+            activeBtn.classList.remove('text-slate-600', 'border-slate-200/60');
+
+            renderAll();
+        };
+
+        function populatePaymentMethodDropdowns() {
+            const methods = [
+                ...appState.cards.map(c => c.name),
+                ...appState.accounts.map(a => `${a.bank}(${a.owner}-${a.purpose})`)
+            ];
+            if (methods.length === 0) {
+                methods.push('기본 카드/계좌');
+            }
+
+            const selects = ['pdfMethodSelect', 'manualMethod', 'filterMethod'];
+            selects.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const prev = el.value;
+                el.innerHTML = id === 'filterMethod' ? '<option value="ALL">전체 카드/계좌</option>' : '';
+                methods.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.textContent = m;
+                    el.appendChild(opt);
+                });
+                if (prev && methods.includes(prev)) el.value = prev;
+            });
+        }
+
+        // =========================================================
+        // 6. 핵심 재무 계산 및 부채 상환 시뮬레이션 엔진
+        // =========================================================
+        function getIncomeAmt(item) {
+            return Number(item.amount ?? item.monthlyAmount ?? 0);
+        }
+        function isIncomeBonus(item) {
+            return item.type === '기타수당' || !!item.isBonus;
+        }
+        function getDebtBalance(debt) {
+            return Number(debt.balance ?? debt.currentBalance ?? 0);
+        }
+        function getDebtRate(debt) {
+            return Number(debt.rate ?? debt.interestRate ?? 0);
+        }
+        function isDebtMortgage(debt) {
+            return !!debt.isMortgage || debt.id === 'debt_mortgage' || (debt.name && (debt.name.includes('집담보') || debt.name.includes('디딤돌')));
+        }
+        function isAssetRealEstate(ast) {
+            return !!ast.isRealEstate || ast.category === '부동산' || (ast.name && ast.name.includes('부동산'));
+        }
+
+        function calculateFinancialMetrics(targetMonth) {
+            const regularIncome = appState.incomes
+                .filter(i => !isIncomeBonus(i))
+                .reduce((sum, i) => sum + getIncomeAmt(i), 0);
+            const bonusIncome = appState.incomes
+                .filter(i => isIncomeBonus(i))
+                .reduce((sum, i) => sum + getIncomeAmt(i), 0);
+            const activeMonthlyIncome = appState.includeBonusInMonthly ? (regularIncome + bonusIncome) : regularIncome;
+
+            const totalFixedExpense = appState.fixedExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+            const monthTx = appState.transactions.filter(tx => tx.date && tx.date.startsWith(targetMonth));
+            const totalVariableExpense = monthTx
+                .filter(tx => tx.category !== '부채상환(마통)')
+                .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+            const totalSavings = appState.savings.reduce((sum, s) => sum + Number(s.amount || 0), 0);
+
+            const totalMonthlyOutflow = totalFixedExpense + totalVariableExpense + totalSavings;
+            const monthlyNetProfit = activeMonthlyIncome - totalMonthlyOutflow;
+            const annualNetProfit = monthlyNetProfit * 12;
+
+            const totalAssets = appState.assets.reduce((sum, a) => sum + Number(a.amount || 0), 0);
+            const financialAssets = appState.assets
+                .filter(a => !isAssetRealEstate(a))
+                .reduce((sum, a) => sum + Number(a.amount || 0), 0);
+
+            const totalDebts = appState.debts.reduce((sum, d) => sum + getDebtBalance(d), 0);
+            const nonMortgageDebts = appState.debts
+                .filter(d => !isDebtMortgage(d))
+                .reduce((sum, d) => sum + getDebtBalance(d), 0);
+
+            const allocRatio = (appState.extraDebtRatio ?? 100) / 100;
+            const monthlySurplusForDebt = monthlyNetProfit > 0 ? Math.round(monthlyNetProfit * allocRatio) : 0;
+
+            // 우선순위(priority 오름차순) -> 금리(내림차순) 정렬
+            const sortedDebtsForSim = [...appState.debts].sort((a, b) => {
+                const pA = Number(a.priority || 99);
+                const pB = Number(b.priority || 99);
+                if (pA !== pB) return pA - pB;
+                return getDebtRate(b) - getDebtRate(a);
+            });
+
+            const debtSimResults = simulateDebtPayoff(sortedDebtsForSim, monthlySurplusForDebt);
+
+            return {
+                regularIncome,
+                bonusIncome,
+                activeMonthlyIncome,
+                totalFixedExpense,
+                totalVariableExpense,
+                totalSavings,
+                totalMonthlyOutflow,
+                monthlyNetProfit,
+                annualNetProfit,
+                totalAssets,
+                financialAssets,
+                totalDebts,
+                nonMortgageDebts,
+                monthlySurplusForDebt,
+                debtSimResults,
+                monthTx
+            };
+        }
+
+        function simulateSingleBaselineInterest(balance, annualRate, monthlyPay) {
+            if (balance <= 0) return { months: 0, totalInterest: 0, unpayable: false };
+            let b = balance;
+            let months = 0;
+            let totalInt = 0;
+            const MAX = 600;
+            while (b > 0 && months < MAX) {
+                months++;
+                const interest = (b * (annualRate / 100)) / 12;
+                if (monthlyPay <= interest) {
+                    return { months: Infinity, totalInterest: Infinity, unpayable: true };
+                }
+                totalInt += interest;
+                b -= (monthlyPay - interest);
+                if (b < 0) b = 0;
+            }
+            return { months, totalInterest: Math.round(totalInt), unpayable: false };
+        }
+
+        function simulateDebtPayoff(sortedDebts, extraSurplusMonthly) {
+            let simDebts = sortedDebts.map(d => {
+                const bal = getDebtBalance(d);
+                const rate = getDebtRate(d);
+                const basePay = Number(d.monthlyPayment || 0);
+                const baseline = simulateSingleBaselineInterest(bal, rate, basePay);
+                return {
+                    id: d.id,
+                    name: d.name,
+                    priority: d.priority || '-',
+                    balance: bal,
+                    rate: rate,
+                    basePay: basePay,
+                    extraMonthly: 0,
+                    months: 0,
+                    totalInterestPaid: 0,
+                    baselineInterest: baseline.totalInterest,
+                    baselineUnpayable: baseline.unpayable,
+                    paidOff: bal <= 0,
+                    unpayable: false,
+                    isMortgage: isDebtMortgage(d)
+                };
+            });
+
+            const firstActive = simDebts.find(d => d.balance > 0);
+            if (firstActive) {
+                firstActive.extraMonthly = extraSurplusMonthly;
+            }
+
+            let monthCounter = 0;
+            const MAX_MONTHS = 600;
+
+            while (simDebts.some(d => !d.paidOff && !d.unpayable) && monthCounter < MAX_MONTHS) {
+                monthCounter++;
+                let availableExtra = extraSurplusMonthly;
+
+                for (let d of simDebts) {
+                    if (d.paidOff || d.unpayable) continue;
+
+                    const monthlyInterest = (d.balance * (d.rate / 100)) / 12;
+                    const paymentThisMonth = d.basePay + availableExtra;
+                    availableExtra = 0;
+
+                    if (paymentThisMonth <= monthlyInterest && d.balance > 0) {
+                        d.unpayable = true;
+                        d.months = Infinity;
+                        continue;
+                    }
+
+                    d.totalInterestPaid += monthlyInterest;
+                    const principalReduction = paymentThisMonth - monthlyInterest;
+                    d.balance -= principalReduction;
+
+                    if (d.balance <= 0) {
+                        availableExtra += Math.abs(d.balance);
+                        d.balance = 0;
+                        d.paidOff = true;
+                        d.months = monthCounter;
+                    }
+                }
+            }
+
+            return simDebts.map(d => {
+                let targetDateStr = '-';
+                if (d.paidOff && d.months === 0) {
+                    targetDateStr = '완제 완료';
+                } else if (d.unpayable || d.months >= MAX_MONTHS) {
+                    targetDateStr = '원금상환액 설정 필요';
+                } else {
+                    const dt = new Date();
+                    dt.setMonth(dt.getMonth() + d.months);
+                    targetDateStr = `${dt.getFullYear()}년 ${dt.getMonth() + 1}월`;
+                }
+                const savedInterest = (!d.unpayable && !d.baselineUnpayable && isFinite(d.baselineInterest))
+                    ? Math.max(0, Math.round(d.baselineInterest - d.totalInterestPaid))
+                    : 0;
+                return { ...d, targetDateStr, savedInterest };
+            });
+        }
+
+        // =========================================================
+        // 7. 전체 화면 렌더링 통합 함수
+        // =========================================================
+        function renderAll() {
+            const targetMonth = document.getElementById('overviewMonthSelector').value || new Date().toISOString().slice(0, 7);
+            const metrics = calculateFinancialMetrics(targetMonth);
+
+            document.getElementById('headerBaseDate').textContent = appState.baseDate || '2026-07-05';
+            const baseDateInput = document.getElementById('baseDateInput');
+            if (baseDateInput) baseDateInput.value = appState.baseDate || '2026-07-05';
+            document.getElementById('includeBonusToggle').checked = !!appState.includeBonusInMonthly;
+            document.getElementById('surplusAllocSlider').value = appState.extraDebtRatio ?? 100;
+
+            const isCompletelyEmpty = appState.incomes.length === 0 && appState.debts.length === 0 && appState.fixedExpenses.length === 0;
+            const guideBanner = document.getElementById('emptyDataGuideBanner');
+            if (isCompletelyEmpty) {
+                guideBanner.classList.remove('hidden');
+            } else {
+                guideBanner.classList.add('hidden');
+            }
+
+            renderOverviewKPIs(metrics);
+            renderOverviewCharts(metrics, targetMonth);
+            renderDebtSimulator(metrics);
+            renderTransactionTable();
+            renderBudgetSettings();
+        }
+
+        function renderOverviewKPIs(m) {
+            const netWorth = m.totalAssets - m.totalDebts;
+            const finNetWorth = m.financialAssets - m.nonMortgageDebts;
+
+            document.getElementById('kpiTotalAssets').textContent = formatKRW(m.totalAssets);
+            document.getElementById('kpiFinancialAssets').textContent = formatKRW(m.financialAssets);
+
+            document.getElementById('kpiTotalDebt').textContent = formatKRW(m.totalDebts);
+            document.getElementById('kpiNonMortgageDebt').textContent = formatKRW(m.nonMortgageDebts);
+
+            const netWorthEl = document.getElementById('kpiNetWorth');
+            netWorthEl.textContent = (netWorth >= 0 ? '+' : '') + formatKRW(netWorth);
+            netWorthEl.className = `text-xl sm:text-2xl font-bold ${netWorth >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+
+            document.getElementById('kpiFinancialNetWorth').textContent = (finNetWorth >= 0 ? '+' : '') + formatKRW(finNetWorth);
+
+            document.getElementById('kpiMonthlyIncome').textContent = formatKRW(m.activeMonthlyIncome);
+            document.getElementById('kpiBonusIncome').textContent = formatKRW(m.bonusIncome);
+
+            document.getElementById('kpiMonthlyOutflow').textContent = formatKRW(m.totalMonthlyOutflow);
+            document.getElementById('kpiFixedSub').textContent = formatKoreanUnit(m.totalFixedExpense);
+            document.getElementById('kpiSavingsSub').textContent = formatKoreanUnit(m.totalSavings);
+            document.getElementById('kpiVarSub').textContent = formatKoreanUnit(m.totalVariableExpense);
+
+            const profitEl = document.getElementById('kpiMonthlyProfit');
+            profitEl.textContent = (m.monthlyNetProfit >= 0 ? '+' : '') + formatKRW(m.monthlyNetProfit);
+            profitEl.className = `text-xl sm:text-2xl font-bold ${m.monthlyNetProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+
+            const annualEl = document.getElementById('kpiAnnualProfit');
+            annualEl.textContent = (m.annualNetProfit >= 0 ? '+' : '') + formatKRW(m.annualNetProfit);
+
+            // 배너 영역
+            const debtRatio = m.totalAssets > 0 ? ((m.totalDebts / m.totalAssets) * 100).toFixed(1) : '0.0';
+            document.getElementById('bannerDebtRatio').textContent = `${debtRatio}%`;
+            document.getElementById('bannerAssetVsDebtText').textContent = `총자산 ${formatKoreanUnit(m.totalAssets)} / 총부채 ${formatKoreanUnit(m.totalDebts)}`;
+
+            const nonMortgageSims = m.debtSimResults.filter(s => !s.isMortgage && !s.unpayable && s.months > 0);
+            const maxMonths = nonMortgageSims.length > 0 ? Math.max(...nonMortgageSims.map(s => s.months)) : 0;
+            document.getElementById('bannerPayoffMonths').textContent = maxMonths > 0 ? `${maxMonths}개월 후` : '0개월';
+            if (maxMonths > 0) {
+                const dt = new Date();
+                dt.setMonth(dt.getMonth() + maxMonths);
+                document.getElementById('bannerPayoffDate').textContent = `예상 시점: ${dt.getFullYear()}년 ${dt.getMonth() + 1}월`;
+            } else {
+                document.getElementById('bannerPayoffDate').textContent = '예상 시점: -';
+            }
+
+            document.getElementById('bannerExtraDebtPay').textContent = `${formatKRW(m.monthlySurplusForDebt)} / 월`;
+        }
+
+        function renderOverviewCharts(m, targetMonth) {
+            const ownerTotals = { '지현': 0, '민주': 0, '공동': 0 };
+            appState.fixedExpenses.forEach(fe => {
+                const o = ownerTotals.hasOwnProperty(fe.owner) ? fe.owner : '공동';
+                ownerTotals[o] += Number(fe.amount || 0);
+            });
+            m.monthTx.forEach(tx => {
+                if (tx.category === '부채상환(마통)') return;
+                const o = ownerTotals.hasOwnProperty(tx.owner) ? tx.owner : '공동';
+                ownerTotals[o] += Number(tx.amount || 0);
+            });
+
+            const ownerCardsEl = document.getElementById('ownerSummaryCards');
+            ownerCardsEl.innerHTML = ['지현', '민주', '공동'].map(o => `
+                <div class="bg-slate-50 p-2 rounded-lg">
+                    <div class="text-slate-500 font-medium">${o} 지출</div>
+                    <div class="font-bold text-slate-900 mt-0.5 truncate">${formatKRW(ownerTotals[o])}</div>
+                </div>
+            `).join('');
+
+            const ctxOwner = document.getElementById('ownerComparisonChart').getContext('2d');
+            if (charts.owner) charts.owner.destroy();
+            charts.owner = new Chart(ctxOwner, {
+                type: 'bar',
+                data: {
+                    labels: ['지현', '민주', '공동'],
+                    datasets: [{
+                        label: '월 지출액 (원)',
+                        data: [ownerTotals['지현'], ownerTotals['민주'], ownerTotals['공동']],
+                        backgroundColor: ['#4f46e5', '#10b981', '#f59e0b'],
+                        borderRadius: 8,
+                        barThickness: 36
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: val => (val / 10000).toLocaleString() + '만' }
+                        }
+                    }
+                }
+            });
+
+            const catTotals = {};
+            appState.fixedExpenses.forEach(fe => {
+                const c = fe.category || '기타/용돈';
+                catTotals[c] = (catTotals[c] || 0) + Number(fe.amount || 0);
+            });
+            m.monthTx.forEach(tx => {
+                if (tx.category === '부채상환(마통)') return;
+                const c = tx.category || '기타/용돈';
+                catTotals[c] = (catTotals[c] || 0) + Number(tx.amount || 0);
+            });
+
+            const sortedCats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+            const palette = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#64748b', '#ec4899'];
+
+            const ctxCat = document.getElementById('categoryDoughnutChart').getContext('2d');
+            if (charts.category) charts.category.destroy();
+            charts.category = new Chart(ctxCat, {
+                type: 'doughnut',
+                data: {
+                    labels: sortedCats.length > 0 ? sortedCats.map(c => c[0]) : ['데이터 없음'],
+                    datasets: [{
+                        data: sortedCats.length > 0 ? sortedCats.map(c => c[1]) : [1],
+                        backgroundColor: sortedCats.length > 0 ? palette.slice(0, sortedCats.length) : ['#e2e8f0'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '60%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } }
+                    }
+                }
+            });
+
+            const totalCatSum = sortedCats.reduce((s, c) => s + c[1], 0) || 1;
+            document.getElementById('categoryLegendList').innerHTML = sortedCats.slice(0, 6).map(([cat, amt], idx) => `
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-600 truncate"><span class="inline-block w-2 h-2 rounded-full mr-1.5" style="background:${palette[idx % palette.length]}"></span>${cat}</span>
+                    <span class="font-semibold text-slate-800">${formatKRW(amt)} (${Math.round((amt / totalCatSum) * 100)}%)</span>
+                </div>
+            `).join('');
+        }
+
+        // =========================================================
+        // 8. 부채 상환 시뮬레이터 렌더링 (모든 금액 쉼표+원 포맷 적용)
+        // =========================================================
+        window.updateSurplusSlider = function (val) {
+            appState.extraDebtRatio = Number(val);
+            saveState();
+            renderAll();
+        };
+
+        function renderDebtSimulator(metrics) {
+            const sliderVal = appState.extraDebtRatio ?? 100;
+            document.getElementById('surplusAllocLabel').textContent = `${sliderVal}% (${formatKRW(metrics.monthlySurplusForDebt)}/월)`;
+
+            const cardsContainer = document.getElementById('debtCardsContainer');
+            if (appState.debts.length === 0) {
+                cardsContainer.innerHTML = '<div class="col-span-full bg-white p-8 rounded-2xl border border-slate-200 text-center text-xs text-slate-400">등록된 부채 항목이 없습니다. 하단 [+ 새 부채 추가] 또는 상단 [데이터 불러오기]를 이용하세요.</div>';
+            } else {
+                cardsContainer.innerHTML = appState.debts.map((debt, idx) => {
+                    const sim = metrics.debtSimResults.find(s => s.id === debt.id) || {};
+                    const bal = getDebtBalance(debt);
+                    const rate = getDebtRate(debt);
+                    const initAmt = Number(debt.initialAmount || bal);
+                    const paidAmt = Math.max(0, initAmt - bal);
+                    const progressPct = initAmt > 0 ? Math.min(100, Math.round((paidAmt / initAmt) * 100)) : 100;
+
+                    return `
+                        <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-start justify-between gap-2 mb-3">
+                                    <div class="w-full">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">${debt.priority ? debt.priority + '순위' : '일반'}</span>
+                                                <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">연 ${rate}%</span>
+                                            </div>
+                                            <button onclick="deleteDebtItem(${idx})" class="text-xs text-rose-500 hover:text-rose-700 font-medium">삭제</button>
+                                        </div>
+                                        <input type="text" value="${debt.name}" onchange="updateDebtText(${idx}, 'name', this.value)" class="w-full text-base font-bold text-slate-900 mt-1.5 bg-transparent border-b border-transparent focus:border-indigo-400 focus:outline-none">
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <div class="flex justify-between text-xs mb-1">
+                                        <span class="text-slate-500">상환 진행률</span>
+                                        <span class="font-bold text-indigo-600">${progressPct}% (${formatKRW(paidAmt)} 탕감)</span>
+                                    </div>
+                                    <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                        <div class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: ${progressPct}%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 text-xs">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <label class="font-semibold text-slate-600 shrink-0">현재 잔액:</label>
+                                        <div class="relative w-36 sm:w-40">
+                                            <input type="text" inputmode="numeric" value="${formatNumberComma(bal)}" onfocus="selectAllOnFocus(this)" oninput="formatCurrencyInputLive(this)" onchange="updateDebtAmount(${idx}, 'balance', this.value)" class="w-full text-right font-bold text-slate-900 bg-white border border-slate-300 rounded-lg pl-2 pr-6 py-1.5">
+                                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">원</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <label class="font-semibold text-slate-600 shrink-0">연 이자율 (%):</label>
+                                        <input type="number" step="0.1" value="${rate}" onchange="updateDebtRate(${idx}, this.value)" class="w-24 text-right font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg px-2 py-1.5">
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <label class="font-semibold text-slate-600 shrink-0">월 기본납입:</label>
+                                        <div class="relative w-36 sm:w-40">
+                                            <input type="text" inputmode="numeric" value="${formatNumberComma(debt.monthlyPayment || 0)}" onfocus="selectAllOnFocus(this)" oninput="formatCurrencyInputLive(this)" onchange="updateDebtAmount(${idx}, 'monthlyPayment', this.value)" class="w-full text-right font-bold text-indigo-700 bg-white border border-slate-300 rounded-lg pl-2 pr-6 py-1.5">
+                                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">원</span>
+                                        </div>
+                                    </div>
+                                    ${sim.extraMonthly > 0 ? `
+                                    <div class="flex items-center justify-between text-emerald-700 font-bold pt-1.5 border-t border-slate-200">
+                                        <span>+ 잉여현금 추가투입:</span>
+                                        <span>+${formatKRW(sim.extraMonthly)}/월</span>
+                                    </div>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="mt-4 pt-3 border-t border-slate-100">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-medium text-slate-500">예상 완제 기간</span>
+                                    <span class="text-lg font-extrabold ${sim.unpayable ? 'text-amber-600' : 'text-emerald-600'}">
+                                        ${sim.paidOff ? '완제 완료!' : (sim.unpayable ? '원금상환 필요' : `${sim.months}개월 후`)}
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs mt-1">
+                                    <span class="text-slate-400">${sim.savedInterest > 0 ? `이자 약 ${formatKoreanUnit(sim.savedInterest)} 절감` : ''}</span>
+                                    <span class="font-semibold text-slate-600">목표: ${sim.targetDateStr}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            const tbody = document.getElementById('debtSummaryTableBody');
+            tbody.innerHTML = metrics.debtSimResults.length === 0
+                ? '<tr><td colspan="9" class="p-6 text-center text-xs text-slate-400">표시할 부채 내역이 없습니다.</td></tr>'
+                : metrics.debtSimResults.map(sim => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-2.5 text-xs font-bold text-indigo-600">${sim.priority}순위</td>
+                        <td class="p-2.5 font-bold text-slate-900">${sim.name}</td>
+                        <td class="p-2.5 text-right font-semibold">${formatKRW(sim.balance)}</td>
+                        <td class="p-2.5 text-right text-slate-600">${sim.rate}%</td>
+                        <td class="p-2.5 text-right text-indigo-700 font-semibold">${formatKRW(sim.basePay)}</td>
+                        <td class="p-2.5 text-right text-emerald-600 font-semibold">+${formatKRW(sim.extraMonthly || 0)}</td>
+                        <td class="p-2.5 text-right font-extrabold text-slate-900">${sim.unpayable ? '-' : sim.months + '개월'}</td>
+                        <td class="p-2.5 text-right text-xs font-bold text-indigo-600">${sim.targetDateStr}</td>
+                        <td class="p-2.5 text-right text-xs font-bold text-emerald-600">${sim.savedInterest > 0 ? formatKRW(sim.savedInterest) : '-'}</td>
+                    </tr>
+                `).join('');
+        }
+
+        window.updateDebtText = function (idx, field, val) {
+            appState.debts[idx][field] = val;
+            saveState(); renderAll();
+        };
+        window.updateDebtAmount = function (idx, field, strVal) {
+            const num = parseNumberComma(strVal);
+            if (field === 'balance') {
+                appState.debts[idx].balance = num;
+                appState.debts[idx].currentBalance = num;
+            } else {
+                appState.debts[idx][field] = num;
+            }
+            saveState(); renderAll();
+        };
+        window.updateDebtRate = function (idx, val) {
+            const num = Number(val);
+            appState.debts[idx].rate = num;
+            appState.debts[idx].interestRate = num;
+            saveState(); renderAll();
+        };
+        window.deleteDebtItem = function (idx) {
+            appState.debts.splice(idx, 1);
+            saveState(); renderAll();
+        };
+        window.addNewDebt = function () {
+            appState.debts.push({
+                id: 'debt_' + Date.now(),
+                name: '새 대출 항목',
+                initialAmount: 10000000,
+                balance: 10000000,
+                currentBalance: 10000000,
+                rate: 4.0,
+                interestRate: 4.0,
+                monthlyPayment: 500000,
+                priority: appState.debts.length + 1,
+                isMortgage: false,
+                note: '신규 추가 부채'
+            });
+            saveState(); renderAll();
+        };
+
+        // =========================================================
+        // 9. PDF 파싱 및 거래내역 관리
+        // =========================================================
+        const dropZone = document.getElementById('pdfDropZone');
+        dropZone.addEventListener('click', () => document.getElementById('pdfFileInput').click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-indigo-600', 'bg-indigo-50');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-indigo-600', 'bg-indigo-50');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-600', 'bg-indigo-50');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                processPdfFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        window.handlePdfFileSelect = function (event) {
+            if (event.target.files && event.target.files[0]) {
+                processPdfFile(event.target.files[0]);
+            }
+        };
+
+        function autoCategorizeMerchant(desc) {
+            const d = desc.toLowerCase();
+            if (/코스트코|이마트|홈플러스|롯데마트|쿠팡|마켓컬리|배달의민족|우아한형제들|요기요|식당|카페|스타벅스|투썸|메가커피|컴포즈|편의점|gs25|cu|세븐일레븐|베이커리|파리바게뜨|마트|정육|청과|반찬/.test(d)) {
+                return '식비/생활비';
+            }
+            if (/주유|gs칼텍스|sk에너지|s-oil|에쓰오일|현대오일뱅크|하이패스|한국도로공사|주차|정비|오토오아시스|블루핸즈|쏘렌토|타이어|세차/.test(d)) {
+                return '차량/주유';
+            }
+            if (/관리비|아파트|한국전력|한전|도시가스|수도|전세|월세|부동산|다이소|오늘의집|이케아/.test(d)) {
+                return '주거/관리비';
+            }
+            if (/skt|sk텔레콤|kt|lgu\+|lg유플러스|통신|넷플릭스|유튜브|구글|애플|쿠팡와우|네이버플러스|티빙|웨이브|디즈니/.test(d)) {
+                return '통신/구독';
+            }
+            if (/보험|삼성화재|현대해상|db손보|kb손보|메리츠|병원|의원|치과|약국|한의원|내과|이비인후과|피부과|건강검진/.test(d)) {
+                return '보험/의료';
+            }
+            if (/동물병원|펫|탱이|고양이|츄르|사료|모래/.test(d)) {
+                return '반려동물(탱이)';
+            }
+            if (/축의|부의|화환|선물|카카오선물|백화점|경조/.test(d)) {
+                return '경조사/선물';
+            }
+            if (/마이너스|대출상환|원금상환/.test(d)) {
+                return '부채상환(마통)';
+            }
+            return '개인용돈';
+        }
+
+        async function processPdfFile(file) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                showToast('PDF 파일만 업로드 가능합니다.', 'error');
+                return;
+            }
+
+            const statusEl = document.getElementById('pdfLoadingStatus');
+            statusEl.classList.remove('hidden');
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullLines = [];
+
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const textContent = await page.getTextContent();
+                    
+                    const lineMap = {};
+                    textContent.items.forEach(item => {
+                        const y = Math.round(item.transform[5] / 4) * 4;
+                        if (!lineMap[y]) lineMap[y] = [];
+                        lineMap[y].push({ x: item.transform[4], str: item.str });
+                    });
+
+                    const sortedYs = Object.keys(lineMap).map(Number).sort((a, b) => b - a);
+                    sortedYs.forEach(y => {
+                        const lineStr = lineMap[y]
+                            .sort((a, b) => a.x - b.x)
+                            .map(i => i.str)
+                            .join(' ')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                        if (lineStr) fullLines.push(lineStr);
+                    });
+                }
+
+                const owner = document.getElementById('pdfOwnerSelect').value;
+                const method = document.getElementById('pdfMethodSelect').value;
+                const targetMonth = document.getElementById('pdfTargetMonth').value;
+                const [tYear] = targetMonth.split('-');
+
+                const extracted = [];
+                const dateRegex = /(\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}|\d{2}[.\-/]\d{1,2}[.\-/]\d{1,2}|\d{1,2}[.\-/]\d{1,2})/;
+                const amountRegex = /(-?\d{1,3}(?:,\d{3})+)\s*원?/g;
+
+                fullLines.forEach(line => {
+                    const dateMatch = line.match(dateRegex);
+                    const amountMatches = [...line.matchAll(amountRegex)];
+
+                    if (dateMatch && amountMatches.length > 0) {
+                        const rawAmtStr = amountMatches[amountMatches.length - 1][1].replace(/,/g, '');
+                        const amt = Math.abs(parseInt(rawAmtStr, 10));
+
+                        if (!amt || amt < 100 || /합계|총액|청구예정|결제예정|전월이월/.test(line)) return;
+
+                        let rawDate = dateMatch[1].replace(/[./]/g, '-');
+                        const parts = rawDate.split('-');
+                        let normDate = `${targetMonth}-01`;
+                        if (parts.length === 3) {
+                            const yyyy = parts[0].length === 2 ? `20${parts[0]}` : parts[0];
+                            normDate = `${yyyy}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                        } else if (parts.length === 2) {
+                            normDate = `${tYear}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                        }
+
+                        let desc = line
+                            .replace(dateRegex, '')
+                            .replace(amountRegex, '')
+                            .replace(/일시불|할부|국내|해외|승인|완료|원/g, '')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                        if (!desc) desc = '카드/계좌 사용내역';
+
+                        extracted.push({
+                            id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                            date: normDate,
+                            owner,
+                            method,
+                            desc: desc.slice(0, 40),
+                            category: autoCategorizeMerchant(desc),
+                            amount: amt
+                        });
+                    }
+                });
+
+                statusEl.classList.add('hidden');
+                if (extracted.length === 0) {
+                    showToast('PDF에서 거래 행을 찾지 못했습니다. [샘플 명세서 테스트]로 기능을 먼저 확인해 보세요.', 'error');
+                    return;
+                }
+
+                parsedPdfBuffer = extracted;
+                renderPdfPreviewTable();
+                showToast(`${extracted.length}건의 거래내역을 추출했습니다.`);
+            } catch (err) {
+                console.error(err);
+                statusEl.classList.add('hidden');
+                showToast('PDF 분석 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        window.simulateSamplePdfUpload = function () {
+            const owner = document.getElementById('pdfOwnerSelect').value;
+            const method = document.getElementById('pdfMethodSelect').value;
+            const targetMonth = document.getElementById('pdfTargetMonth').value || new Date().toISOString().slice(0, 7);
+
+            const samples = [
+                { day: '03', desc: '코스트코 대전점 장보기', amount: 184500 },
+                { day: '05', desc: 'GS칼텍스 대전유성주유소', amount: 68000 },
+                { day: '08', desc: '스타벅스 대전둔산점', amount: 11200 },
+                { day: '11', desc: '배달의민족 주말저녁', amount: 34000 },
+                { day: '14', desc: '유성동물의료센터 (탱이 검진)', amount: 55000 },
+                { day: '18', desc: '쿠팡 로켓배송 생필품', amount: 42900 },
+                { day: '22', desc: '한국도로공사 하이패스 통행료', amount: 14600 },
+                { day: '25', desc: '둔산우리치과의원 스케일링', amount: 23000 }
+            ];
+
+            parsedPdfBuffer = samples.map((s, idx) => ({
+                id: 'tx_sample_' + Date.now() + '_' + idx,
+                date: `${targetMonth}-${s.day}`,
+                owner,
+                method,
+                desc: s.desc,
+                category: autoCategorizeMerchant(s.desc),
+                amount: s.amount
+            }));
+
+            renderPdfPreviewTable();
+            showToast('샘플 명세서 8건이 자동 분류되었습니다.');
+        };
+
+        function renderPdfPreviewTable() {
+            const sec = document.getElementById('pdfPreviewSection');
+            sec.classList.remove('hidden');
+            document.getElementById('parsedCount').textContent = parsedPdfBuffer.length;
+
+            const categories = ['식비/생활비', '차량/주유', '주거/관리비', '통신/구독', '보험/의료', '반려동물(탱이)', '경조사/선물', '부채상환(마통)', '개인용돈'];
+            const tbody = document.getElementById('pdfPreviewTableBody');
+
+            tbody.innerHTML = parsedPdfBuffer.map((item, idx) => `
+                <tr>
+                    <td class="p-2">${item.date}</td>
+                    <td class="p-2">
+                        <select onchange="updateParsedField(${idx}, 'owner', this.value)" class="border border-slate-200 rounded px-1.5 py-1">
+                            <option value="지현" ${item.owner === '지현' ? 'selected' : ''}>지현</option>
+                            <option value="민주" ${item.owner === '민주' ? 'selected' : ''}>민주</option>
+                            <option value="공동" ${item.owner === '공동' ? 'selected' : ''}>공동</option>
+                        </select>
+                    </td>
+                    <td class="p-2 text-slate-600">${item.method}</td>
+                    <td class="p-2 font-medium text-slate-800">${item.desc}</td>
+                    <td class="p-2">
+                        <select onchange="updateParsedField(${idx}, 'category', this.value)" class="border border-indigo-200 bg-indigo-50/40 text-indigo-800 font-semibold rounded px-1.5 py-1">
+                            ${categories.map(c => `<option value="${c}" ${item.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="p-2 text-right font-bold">${formatKRW(item.amount)}</td>
+                    <td class="p-2 text-center">
+                        <button onclick="removeParsedRow(${idx})" class="text-rose-500 hover:text-rose-700 font-bold">✕</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        window.updateParsedField = function (idx, field, val) {
+            parsedPdfBuffer[idx][field] = val;
+        };
+        window.removeParsedRow = function (idx) {
+            parsedPdfBuffer.splice(idx, 1);
+            if (parsedPdfBuffer.length === 0) cancelPdfPreview();
+            else renderPdfPreviewTable();
+        };
+        window.cancelPdfPreview = function () {
+            parsedPdfBuffer = [];
+            document.getElementById('pdfPreviewSection').classList.add('hidden');
+            document.getElementById('pdfFileInput').value = '';
+        };
+        window.confirmParsedTransactions = function () {
+            if (parsedPdfBuffer.length === 0) return;
+
+            let debtPaidSum = 0;
+            parsedPdfBuffer.forEach(tx => {
+                if (tx.category === '부채상환(마통)') {
+                    debtPaidSum += Number(tx.amount || 0);
+                }
+            });
+            if (debtPaidSum > 0) {
+                const overdraft = appState.debts.find(d => d.id === 'debt_3' || d.id === 'debt_overdraft' || (d.name && d.name.includes('마이너스')));
+                if (overdraft) {
+                    const nextBal = Math.max(0, getDebtBalance(overdraft) - debtPaidSum);
+                    overdraft.balance = nextBal;
+                    overdraft.currentBalance = nextBal;
+                }
+            }
+
+            appState.transactions = [...parsedPdfBuffer, ...appState.transactions];
+            saveState();
+            const count = parsedPdfBuffer.length;
+            cancelPdfPreview();
+            renderAll();
+            showToast(`${count}건의 사용내역이 가계부에 반영 및 동기화되었습니다!`);
+        };
+
+        window.addManualTransaction = function (e) {
+            e.preventDefault();
+            const date = document.getElementById('manualDate').value;
+            const owner = document.getElementById('manualOwner').value;
+            const method = document.getElementById('manualMethod').value;
+            const category = document.getElementById('manualCategory').value;
+            const desc = document.getElementById('manualDesc').value.trim();
+            const amount = parseNumberComma(document.getElementById('manualAmount').value);
+
+            if (!desc || amount <= 0) return;
+
+            appState.transactions.unshift({
+                id: 'tx_man_' + Date.now(),
+                date,
+                owner,
+                method,
+                desc,
+                category,
+                amount
+            });
+
+            if (category === '부채상환(마통)') {
+                const overdraft = appState.debts.find(d => d.id === 'debt_3' || d.id === 'debt_overdraft' || (d.name && d.name.includes('마이너스')));
+                if (overdraft) {
+                    const nextBal = Math.max(0, getDebtBalance(overdraft) - amount);
+                    overdraft.balance = nextBal;
+                    overdraft.currentBalance = nextBal;
+                    showToast(`마이너스통장 잔액에서 ${formatKRW(amount)}이 즉시 차감되었습니다!`, 'info');
+                }
+            }
+
+            document.getElementById('manualDesc').value = '';
+            document.getElementById('manualAmount').value = '';
+            saveState();
+            renderAll();
+            showToast('거래내역이 추가되었습니다.');
+        };
+
+        window.renderTransactionTable = function () {
+            const fMonth = document.getElementById('filterMonth').value;
+            const fOwner = document.getElementById('filterOwner').value;
+            const fMethod = document.getElementById('filterMethod').value;
+            const fCat = document.getElementById('filterCategory').value;
+
+            const filtered = appState.transactions.filter(tx => {
+                if (fMonth && !tx.date.startsWith(fMonth)) return false;
+                if (fOwner !== 'ALL' && tx.owner !== fOwner) return false;
+                if (fMethod !== 'ALL' && tx.method !== fMethod) return false;
+                if (fCat !== 'ALL' && tx.category !== fCat) return false;
+                return true;
+            });
+
+            const total = filtered.reduce((s, t) => s + Number(t.amount || 0), 0);
+            document.getElementById('filteredTxTotal').textContent = formatKRW(total);
+            document.getElementById('filteredTxCount').textContent = filtered.length;
+
+            const tbody = document.getElementById('transactionTableBody');
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-xs text-slate-400">해당 조건의 등록된 변동지출 내역이 없습니다.</td></tr>';
+                return;
+            }
+
+            const categories = ['식비/생활비', '차량/주유', '주거/관리비', '통신/구독', '보험/의료', '반려동물(탱이)', '경조사/선물', '부채상환(마통)', '개인용돈'];
+
+            tbody.innerHTML = filtered.map(tx => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-2.5 text-xs text-slate-600 whitespace-nowrap">${tx.date}</td>
+                    <td class="p-2.5 text-xs">
+                        <span class="px-2 py-0.5 rounded-full font-semibold ${tx.owner === '지현' ? 'bg-indigo-50 text-indigo-700' : (tx.owner === '민주' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}">
+                            ${tx.owner}
+                        </span>
+                    </td>
+                    <td class="p-2.5 text-xs text-slate-600">${tx.method}</td>
+                    <td class="p-2.5 text-xs font-semibold text-slate-900">${tx.desc}</td>
+                    <td class="p-2.5 text-xs">
+                        <select onchange="updateTransactionCategory('${tx.id}', this.value)" class="border border-slate-200 rounded px-2 py-1 text-xs bg-white">
+                            ${categories.map(c => `<option value="${c}" ${tx.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td class="p-2.5 text-right text-xs font-bold text-slate-900 whitespace-nowrap">${formatKRW(tx.amount)}</td>
+                    <td class="p-2.5 text-center">
+                        <button onclick="deleteTransaction('${tx.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-medium">삭제</button>
+                    </td>
+                </tr>
+            `).join('');
+        };
+
+        window.updateTransactionCategory = function (id, newCat) {
+            const tx = appState.transactions.find(t => t.id === id);
+            if (tx) {
+                tx.category = newCat;
+                saveState();
+                renderAll();
+            }
+        };
+
+        window.deleteTransaction = function (id) {
+            appState.transactions = appState.transactions.filter(t => t.id !== id);
+            saveState();
+            renderAll();
+            showToast('내역이 삭제되었습니다.');
+        };
+
+        // =========================================================
+        // 10. 소득 · 고정지출 · 계좌/카드 설정 (모든 숫자 쉼표+원 포맷)
+        // =========================================================
+        function renderBudgetSettings() {
+            // 1. 월 소득 설정
+            const incContainer = document.getElementById('incomeListContainer');
+            incContainer.innerHTML = appState.incomes.length === 0
+                ? '<p class="text-xs text-slate-400 py-4 text-center">등록된 소득 항목이 없습니다. [+ 소득 추가] 또는 [데이터 불러오기]를 이용하세요.</p>'
+                : appState.incomes.map((inc, idx) => {
+                    const amt = getIncomeAmt(inc);
+                    const isBonus = isIncomeBonus(inc);
+                    return `
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+                        <input type="text" value="${inc.name}" onchange="updateIncomeName(${idx}, this.value)" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                        <div class="flex items-center gap-1.5 w-full sm:w-auto">
+                            <select onchange="updateIncomeType(${idx}, this.value)" class="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 shrink-0">
+                                <option value="정기월급" ${!isBonus ? 'selected' : ''}>정기월급</option>
+                                <option value="기타수당" ${isBonus ? 'selected' : ''}>기타수당</option>
+                            </select>
+                            <div class="relative flex-1 sm:w-32">
+                                <input type="text" inputmode="numeric" value="${formatNumberComma(amt)}" onfocus="selectAllOnFocus(this)" oninput="formatCurrencyInputLive(this)" onchange="updateIncomeAmount(${idx}, this.value)" class="w-full text-right text-xs font-bold bg-white border border-slate-200 rounded-lg pl-2 pr-6 py-1.5">
+                                <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                            </div>
+                            <button onclick="deleteIncomeItem(${idx})" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs shrink-0">✕</button>
+                        </div>
+                    </div>
+                `;}).join('');
+
+            const regSum = appState.incomes.filter(i => !isIncomeBonus(i)).reduce((s, i) => s + getIncomeAmt(i), 0);
+            const allIncSum = appState.incomes.reduce((s, i) => s + getIncomeAmt(i), 0);
+            document.getElementById('setupRegularIncomeTotal').textContent = formatKRW(regSum);
+            document.getElementById('setupTotalIncomeWithBonus').textContent = formatKRW(allIncSum);
+
+            // 2. 보유 자산 현황
+            const astContainer = document.getElementById('assetListContainer');
+            astContainer.innerHTML = appState.assets.length === 0
+                ? '<p class="text-xs text-slate-400 py-4 text-center">등록된 자산 항목이 없습니다.</p>'
+                : appState.assets.map((ast, idx) => `
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+                    <input type="text" value="${ast.name}" onchange="updateAssetName(${idx}, this.value)" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                    <div class="flex items-center gap-1.5 w-full sm:w-auto">
+                        <div class="relative flex-1 sm:w-36">
+                            <input type="text" inputmode="numeric" value="${formatNumberComma(ast.amount || 0)}" onfocus="selectAllOnFocus(this)" oninput="formatCurrencyInputLive(this)" onchange="updateAssetAmount(${idx}, this.value)" class="w-full text-right text-xs font-bold bg-white border border-slate-200 rounded-lg pl-2 pr-6 py-1.5">
+                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                        </div>
+                        <button onclick="deleteAssetItem(${idx})" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs shrink-0">✕</button>
+                    </div>
+                </div>
+            `).join('');
+            const totalAst = appState.assets.reduce((s, a) => s + Number(a.amount || 0), 0);
+            document.getElementById('setupTotalAssets').textContent = formatKRW(totalAst);
+
+            // 3. 월 고정 지출 내역
+            const feContainer = document.getElementById('fixedExpenseListContainer');
+            const categories = ['식비/생활비', '차량/주유', '주거/관리비', '통신/구독', '보험/의료', '반려동물(탱이)', '경조사/선물', '개인용돈'];
+            feContainer.innerHTML = appState.fixedExpenses.length === 0
+                ? '<p class="text-xs text-slate-400 py-4 text-center">등록된 고정지출이 없습니다.</p>'
+                : appState.fixedExpenses.map((fe, idx) => `
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-1.5">
+                    <input type="text" value="${fe.name}" onchange="updateFixedExpenseField(${idx}, 'name', this.value)" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                    <div class="flex items-center gap-1.5 w-full sm:w-auto">
+                        <select onchange="updateFixedExpenseField(${idx}, 'owner', this.value)" class="text-xs bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 shrink-0">
+                            <option value="지현" ${fe.owner === '지현' ? 'selected' : ''}>지현</option>
+                            <option value="민주" ${fe.owner === '민주' ? 'selected' : ''}>민주</option>
+                            <option value="공동" ${fe.owner === '공동' ? 'selected' : ''}>공동</option>
+                        </select>
+                        <select onchange="updateFixedExpenseField(${idx}, 'category', this.value)" class="text-xs bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 shrink-0 max-w-[105px]">
+                            ${categories.map(c => `<option value="${c}" ${fe.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+                        </select>
+                        <div class="relative flex-1 sm:w-28 min-w-[92px]">
+                            <input type="text" inputmode="numeric" value="${formatNumberComma(fe.amount || 0)}" onfocus="selectAllOnFocus(this)" oninput="formatCurrencyInputLive(this)" onchange="updateFixedExpenseAmount(${idx}, this.value)" class="w-full text-right text-xs font-bold bg-white border border-slate-200 rounded-lg pl-2 pr-5 py-1.5">
+                            <span class="absolute right-1.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                        </div>
+                        <button onclick="deleteFixedExpenseItem(${idx})" class="text-slate-400 hover:text-rose-600 p-1 text-xs shrink-0">✕</button>
+                    </div>
+                </div>
+            `).join('');
+            const feTotal = appState.fixedExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+            document.getElementById('setupFixedExpenseTotal').textContent = formatKRW(feTotal);
+
+            // 4. 월 정기 저축 · 투자 배분
+            const savContainer = document.getElementById('savingsListContainer');
+            savContainer.innerHTML = appState.savings.length === 0
+                ? '<p class="text-xs text-slate-400 py-4 text-center">등록된 정기저축 항목이 없습니다.</p>'
+                : appState.savings.map((sav, idx) => `
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
+                    <input type="text" value="${sav.name}" onchange="updateSavingsField(${idx}, 'name', this.value)" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                    <div class="flex items-center gap-1.5 w-full sm:w-auto">
+                        <select onchange="updateSavingsField(${idx}, 'owner', this.value)" class="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 shrink-0">
+                            <option value="지현" ${sav.owner === '지현' ? 'selected' : ''}>지현</option>
+                            <option value="민주" ${sav.owner === '민주' ? 'selected' : ''}>민주</option>
+                            <option value="공동" ${sav.owner === '공동' ? 'selected' : ''}>공동</option>
+                        </select>
+                        <div class="relative flex-1 sm:w-32">
+                            <input type="text" inputmode="numeric" value="${formatNumberComma(sav.amount || 0)}" onfocus="selectAllOnFocus(this)" oninput="formatCurrencyInputLive(this)" onchange="updateSavingsAmount(${idx}, this.value)" class="w-full text-right text-xs font-bold bg-white border border-slate-200 rounded-lg pl-2 pr-6 py-1.5">
+                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                        </div>
+                        <button onclick="deleteSavingsItem(${idx})" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs shrink-0">✕</button>
+                    </div>
+                </div>
+            `).join('');
+            const savTotal = appState.savings.reduce((s, v) => s + Number(v.amount || 0), 0);
+            document.getElementById('setupSavingsTotal').textContent = formatKRW(savTotal);
+
+            // 5. 보유 계좌 목록
+            document.getElementById('accountListContainer').innerHTML = appState.accounts.length === 0
+                ? '<p class="text-xs text-slate-400 py-4 text-center">등록된 계좌가 없습니다.</p>'
+                : appState.accounts.map((acc, idx) => `
+                <div class="flex items-center justify-between gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
+                    <div class="break-all">
+                        <span class="font-bold text-indigo-700">[${acc.owner}]</span>
+                        <span class="font-semibold text-slate-900">${acc.bank}</span>
+                        <span class="text-slate-500 ml-1">${acc.number}</span>
+                        <span class="inline-block ml-1 px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[11px] text-slate-600">${acc.purpose}</span>
+                    </div>
+                    <button onclick="deleteAccountItem(${idx})" class="text-slate-400 hover:text-rose-600 p-1 shrink-0">✕</button>
+                </div>
+            `).join('');
+
+            // 6. 보유 신용·복지카드 목록
+            document.getElementById('cardListContainer').innerHTML = appState.cards.length === 0
+                ? '<p class="text-xs text-slate-400 py-4 text-center">등록된 카드가 없습니다.</p>'
+                : appState.cards.map((crd, idx) => `
+                <div class="flex items-center justify-between gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
+                    <div class="break-all">
+                        <span class="font-bold text-emerald-700">[${crd.type}]</span>
+                        <span class="font-semibold text-slate-900">${crd.name}</span>
+                        <span class="text-slate-500 ml-1">(${crd.note})</span>
+                    </div>
+                    <button onclick="deleteCardItem(${idx})" class="text-slate-400 hover:text-rose-600 p-1 shrink-0">✕</button>
+                </div>
+            `).join('');
+        }
+
+        // 설정 탭 CRUD 핸들러
+        window.updateIncomeName = (idx, val) => { appState.incomes[idx].name = val; saveState(); renderAll(); };
+        window.updateIncomeType = (idx, val) => {
+            appState.incomes[idx].type = val;
+            appState.incomes[idx].isBonus = (val === '기타수당');
+            saveState(); renderAll();
+        };
+        window.updateIncomeAmount = (idx, strVal) => {
+            const num = parseNumberComma(strVal);
+            appState.incomes[idx].amount = num;
+            appState.incomes[idx].monthlyAmount = num;
+            saveState(); renderAll();
+        };
+        window.deleteIncomeItem = (idx) => { appState.incomes.splice(idx, 1); saveState(); renderAll(); };
+        window.addIncomeItem = () => {
+            appState.incomes.push({ id: 'inc_' + Date.now(), name: '새 소득 항목', type: '정기월급', amount: 0, monthlyAmount: 0, isBonus: false });
+            saveState(); renderAll();
+        };
+
+        window.updateAssetName = (idx, val) => { appState.assets[idx].name = val; saveState(); renderAll(); };
+        window.updateAssetAmount = (idx, strVal) => {
+            appState.assets[idx].amount = parseNumberComma(strVal);
+            saveState(); renderAll();
+        };
+        window.deleteAssetItem = (idx) => { appState.assets.splice(idx, 1); saveState(); renderAll(); };
+        window.addAssetItem = () => {
+            appState.assets.push({ id: 'ast_' + Date.now(), name: '새 자산 항목', category: '금융자산', amount: 0, isRealEstate: false });
+            saveState(); renderAll();
+        };
+
+        window.updateFixedExpenseField = (idx, field, val) => { appState.fixedExpenses[idx][field] = val; saveState(); renderAll(); };
+        window.updateFixedExpenseAmount = (idx, strVal) => {
+            appState.fixedExpenses[idx].amount = parseNumberComma(strVal);
+            saveState(); renderAll();
+        };
+        window.deleteFixedExpenseItem = (idx) => { appState.fixedExpenses.splice(idx, 1); saveState(); renderAll(); };
+        window.addFixedExpenseItem = () => {
+            appState.fixedExpenses.push({ id: 'exp_' + Date.now(), name: '새 고정지출', owner: '공동', category: '식비/생활비', amount: 0 });
+            saveState(); renderAll();
+        };
+
+        window.updateSavingsField = (idx, field, val) => { appState.savings[idx][field] = val; saveState(); renderAll(); };
+        window.updateSavingsAmount = (idx, strVal) => {
+            appState.savings[idx].amount = parseNumberComma(strVal);
+            saveState(); renderAll();
+        };
+        window.deleteSavingsItem = (idx) => { appState.savings.splice(idx, 1); saveState(); renderAll(); };
+        window.addSavingsItem = () => {
+            appState.savings.push({ id: 'sav_' + Date.now(), name: '새 정기저축', owner: '공동', amount: 0 });
+            saveState(); renderAll();
+        };
+
+        window.deleteAccountItem = (idx) => { appState.accounts.splice(idx, 1); saveState(); populatePaymentMethodDropdowns(); renderAll(); };
+        window.addAccountItem = () => {
+            appState.accounts.push({ id: 'acc_' + Date.now(), owner: '공동', bank: '새 은행계좌', number: '계좌번호', purpose: '생활비' });
+            saveState(); populatePaymentMethodDropdowns(); renderAll();
+        };
+
+        window.deleteCardItem = (idx) => { appState.cards.splice(idx, 1); saveState(); populatePaymentMethodDropdowns(); renderAll(); };
+        window.addCardItem = () => {
+            appState.cards.push({ id: 'crd_' + Date.now(), name: '새 신용카드', owner: '공동', type: '공동카드', note: '일반지출' });
+            saveState(); populatePaymentMethodDropdowns(); renderAll();
+        };
+
+        window.toggleBonusInclusion = () => {
+            appState.includeBonusInMonthly = document.getElementById('includeBonusToggle').checked;
+            saveState();
+            renderAll();
+        };
+
+        // =========================================================
+        // 11. JSON 백업 / 복원 / 초기 데이터 리셋
+        // =========================================================
+        window.exportDataJSON = function () {
+            const dataStr = JSON.stringify(appState, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `jm_backup.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('백업 파일(jm_backup.json)이 다운로드되었습니다.');
+        };
+
+        window.importDataJSON = function (event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (!Array.isArray(parsed.incomes) || !Array.isArray(parsed.debts)) {
+                        throw new Error('올바른 가계부 백업 파일(jm_backup.json)이 아닙니다.');
+                    }
+                    appState = normalizeState(parsed);
+                    saveState();
+                    populatePaymentMethodDropdowns();
+                    renderAll();
+                    showToast('기존 재무 데이터가 복원되고 클라우드에 동기화되었습니다!');
+                } catch (err) {
+                    showToast('불러오기 실패: ' + err.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        };
+
+        window.confirmResetData = function () {
+            document.getElementById('modalTitle').textContent = '초기 데이터 리셋 (0원 초기화)';
+            document.getElementById('modalMessage').textContent = '클라우드와 현재 기기에 저장된 모든 내역이 비워지고 0원 상태로 초기화됩니다. 필요한 경우 먼저 [데이터 백업 (JSON)]을 눌러주세요.';
+            const btn = document.getElementById('modalConfirmBtn');
+            btn.onclick = () => {
+                appState = getZeroDefaultState();
+                saveState();
+                populatePaymentMethodDropdowns();
+                renderAll();
+                closeModal();
+                showToast('모든 항목이 0원으로 초기화되었습니다.', 'info');
+            };
+            document.getElementById('confirmModal').classList.remove('hidden');
+        };
+
+        window.closeModal = function () {
+            document.getElementById('confirmModal').classList.add('hidden');
+        };
+    </script>
+</body>
+</html>
