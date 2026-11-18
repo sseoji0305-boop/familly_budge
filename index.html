@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <!-- Firebase SDK (Compat v10 for Single-File Realtime Sync) -->
+    <!-- Firebase v10 Compat SDK (Realtime Database) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <!-- Google Fonts -->
@@ -42,7 +42,10 @@
         .card-shadow {
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
         }
-        input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+        /* 금액 입력칸 가독성 향상 (고정폭 숫자 정렬) */
+        .money-input {
+            font-variant-numeric: tabular-nums;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -88,7 +91,7 @@
     </div>
 
     <!-- ========================================================= -->
-    <!-- 상단 헤더 (모바일 완벽 대응) -->
+    <!-- 상단 헤더 (모바일 완벽 대응 & 클라우드 상태 표시) -->
     <!-- ========================================================= -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -101,9 +104,11 @@
                         <div>
                             <div class="flex flex-wrap items-center gap-1.5">
                                 <h1 class="text-base sm:text-xl font-bold text-slate-900">지현 & 민주 가계 재무표</h1>
-                                <span id="syncStatusBadge" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">🔄 클라우드 연결 대기</span>
+                                <span id="cloudSyncBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                    ⏳ 클라우드 연결 중...
+                                </span>
                             </div>
-                            <p class="text-[11px] sm:text-xs text-slate-500">기준일: <span id="headerBaseDate">2026-11-18</span> · 부부 실시간 동기화</p>
+                            <p class="text-[11px] sm:text-xs text-slate-500">기준일: <span id="headerBaseDate">2026-11-18</span> · 부부 실시간 자동 동기화</p>
                         </div>
                     </div>
                     <!-- 잠금 버튼 (모바일 우측 상단) -->
@@ -113,21 +118,18 @@
                 </div>
 
                 <!-- 데이터 백업 / 불러오기 / 초기화 버튼 그룹 -->
-                <div class="grid grid-cols-4 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2">
-                    <button onclick="forceCloudSync()" class="inline-flex items-center justify-center gap-1 px-2 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition" title="클라우드 즉시 동기화">
-                        <span>☁️ 동기화</span>
-                    </button>
-                    <button onclick="exportDataJSON()" class="inline-flex items-center justify-center gap-1 px-2 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
-                        <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0 hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <div class="grid grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2">
+                    <button onclick="exportDataJSON()" class="inline-flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                        <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                         <span>백업저장</span>
                     </button>
-                    <label class="inline-flex items-center justify-center gap-1 px-2 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 cursor-pointer transition">
-                        <svg class="w-3.5 h-3.5 shrink-0 hidden sm:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <label class="inline-flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 cursor-pointer transition">
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
                         <span>불러오기</span>
                         <input type="file" id="importJsonInput" accept=".json" class="hidden" onchange="importDataJSON(event)">
                     </label>
-                    <button onclick="confirmResetData()" class="inline-flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition">
-                        <span>초기화</span>
+                    <button onclick="confirmResetData()" class="inline-flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-medium text-rose-600 bg-rose-50 border border-rose-200 rounded-lg hover:bg-rose-100 transition">
+                        <span>0원 초기화</span>
                     </button>
                     <button onclick="lockAppNow()" class="hidden md:inline-flex items-center gap-1 px-2.5 py-2 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">
                         🔒 잠금
@@ -288,7 +290,6 @@
 
             <!-- 차트 영역 1: 지현 vs 민주 비교 & 카테고리별 비중 -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <!-- 지현 vs 민주 지출 비교 -->
                 <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
                     <div class="mb-4">
                         <h3 class="text-base font-bold text-slate-900">지현 vs 민주 월별 지출 비교</h3>
@@ -300,7 +301,6 @@
                     <div id="ownerSummaryCards" class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100 text-center text-xs"></div>
                 </div>
 
-                <!-- 사용성격(카테고리)별 지출 비중 -->
                 <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
                     <div class="mb-4">
                         <h3 class="text-base font-bold text-slate-900">사용성격(카테고리)별 지출 분석</h3>
@@ -429,7 +429,7 @@
                 </div>
             </div>
 
-            <!-- 수기 단건 입력 바 -->
+            <!-- 수기 단건 입력 바 (천 단위 쉼표 실시간 자동 적용) -->
             <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 card-shadow">
                 <h3 class="text-sm font-bold text-slate-900 mb-3">변동지출 · 부채상환 단건 직접 입력</h3>
                 <form onsubmit="addManualTransaction(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5">
@@ -453,7 +453,10 @@
                     </select>
                     <input type="text" id="manualDesc" placeholder="내용 (예: 코스트코 장보기)" required class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg">
                     <div class="flex gap-2">
-                        <input type="number" id="manualAmount" placeholder="금액(원)" required min="1" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg">
+                        <div class="relative flex-1">
+                            <input type="text" inputmode="numeric" id="manualAmount" placeholder="금액" required oninput="formatInputWithCommasOnly(this)" class="money-input w-full pl-3 pr-7 py-2 text-right font-bold text-xs border border-slate-300 rounded-lg">
+                            <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                        </div>
                         <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shrink-0">추가</button>
                     </div>
                 </form>
@@ -512,14 +515,14 @@
         </section>
 
         <!-- ========================================================= -->
-        <!-- TAB 3: 소득 · 고정지출 · 계좌/카드 · PIN 설정 (모바일 최적화) -->
+        <!-- TAB 3: 소득 · 고정지출 · 계좌/카드 · PIN 설정 (모바일 최적화 + 쉼표 입력) -->
         <!-- ========================================================= -->
         <section id="view-budget" class="hidden space-y-5">
             <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div class="text-xs text-indigo-900">
-                    <strong>실시간 연동 안내:</strong> 금액을 수정하면 대시보드 순이익과 부채 탕감 기간이 즉시 재계산됩니다.
+                    <strong>실시간 연동 안내:</strong> 모든 금액 입력칸에 쉼표(<code>,</code>)가 자동 적용되며 수정 즉시 부부 기기에 동기화됩니다.
                 </div>
-                <span class="text-xs font-bold text-indigo-700">자동 저장됨 ✓</span>
+                <span id="saveIndicatorText" class="text-xs font-bold text-indigo-700">자동 저장됨 ✓</span>
             </div>
 
             <!-- 1. 월 소득 및 자산 설정 -->
@@ -613,11 +616,11 @@
 
             <!-- 4. 보안 PIN 비밀번호 변경 설정 -->
             <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 card-shadow">
-                <h3 class="text-base font-bold text-slate-900 mb-1">🔒 접속 잠금 및 클라우드 방 비밀번호(PIN) 변경</h3>
-                <p class="text-xs text-slate-500 mb-4">PIN 번호는 클라우드 동기화 방 이름(<code>jm_family_비밀번호</code>)과 연동됩니다. 번호를 변경하면 두 분 모두 새 비밀번호로 접속해야 데이터가 동기화됩니다. (기본값: 0305)</p>
+                <h3 class="text-base font-bold text-slate-900 mb-1">🔒 접속 잠금 비밀번호(PIN) 변경</h3>
+                <p class="text-xs text-slate-500 mb-4">현재 기기에서 사용할 4자리 숫자 비밀번호를 변경할 수 있습니다. (초기 기본값: 0305)</p>
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-md">
                     <input type="password" id="newPinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="새 비밀번호 4자리 숫자" class="flex-1 px-3 py-2 text-sm border border-slate-300 rounded-lg">
-                    <button onclick="changeAppPin()" class="px-4 py-2 text-xs font-bold text-white bg-slate-800 rounded-lg hover:bg-slate-900">비밀번호 변경 및 이관</button>
+                    <button onclick="changeAppPin()" class="px-4 py-2 text-xs font-bold text-white bg-slate-800 rounded-lg hover:bg-slate-900">비밀번호 저장</button>
                 </div>
             </div>
         </section>
@@ -680,21 +683,26 @@
     <!-- 푸터 -->
     <footer class="bg-white border-t border-slate-200 py-4 mt-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 gap-2 text-center">
-            <span>지현 & 민주 전용 가계 재무 대시보드 · Firebase 실시간 클라우드 연동</span>
-            <span>수기 변경 시 즉시 자동 저장되며 상대방 기기에 실시간 반영됩니다.</span>
+            <span>지현 & 민주 전용 가계 재무 대시보드 · Firebase 클라우드 실시간 연동</span>
+            <span>어느 기기에서 수정해도 배우자 화면에 즉시 자동 반영됩니다.</span>
         </div>
     </footer>
 
     <!-- ========================================================= -->
-    <!-- APPLICATION LOGIC (JavaScript) -->
+    <!-- APPLICATION LOGIC (JavaScript + Firebase Realtime Sync) -->
     <!-- ========================================================= -->
     <script>
         if (window.pdfjsLib) {
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         }
 
+        const STORAGE_KEY = 'jm_household_finance_v3';
+        const PIN_STORAGE_KEY = 'jm_household_pin_v1';
+        const SESSION_UNLOCK_KEY = 'jm_household_unlocked';
+        const DEFAULT_PIN = '0305';
+
         // =========================================================
-        // Firebase Realtime Database 초기화 및 설정
+        // Firebase Realtime Database 초기화 (지현 & 민주 전용 클라우드)
         // =========================================================
         const firebaseConfig = {
             apiKey: "AIzaSyAPO-U_9N7T-v7lu4EcI1uI6U7SR7_e5B4",
@@ -706,162 +714,138 @@
             appId: "1:605014653252:web:9466e33aa0a301fca2ff11"
         };
 
-        let firebaseDb = null;
-        let currentDbRef = null;
-        let isApplyingRemoteUpdate = false;
+        let dbRef = null;
+        let isFirebaseConnected = false;
+        let ignoreNextCloudSnapshot = false;
 
-        try {
-            if (window.firebase) {
+        function initFirebaseSync() {
+            const badge = document.getElementById('cloudSyncBadge');
+            try {
                 if (!firebase.apps.length) {
                     firebase.initializeApp(firebaseConfig);
                 }
-                firebaseDb = firebase.database();
-            }
-        } catch (err) {
-            console.error('Firebase 초기화 실패:', err);
-        }
+                const db = firebase.database();
+                const currentPin = localStorage.getItem(PIN_STORAGE_KEY) || DEFAULT_PIN;
+                dbRef = db.ref(`jm_family_${currentPin}`);
 
-        const STORAGE_KEY = 'jm_household_finance_v2';
-        const PIN_STORAGE_KEY = 'jm_household_pin_v1';
-        const SESSION_UNLOCK_KEY = 'jm_household_unlocked';
-        const DEFAULT_PIN = '0305';
-
-        function updateSyncBadge(status, customText) {
-            const badge = document.getElementById('syncStatusBadge');
-            if (!badge) return;
-            if (status === 'connected') {
-                badge.className = 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
-                badge.textContent = customText || '🟢 클라우드 실시간 연동됨';
-            } else if (status === 'syncing') {
-                badge.className = 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200';
-                badge.textContent = customText || '🔄 동기화 중...';
-            } else {
-                badge.className = 'text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
-                badge.textContent = customText || '⚠️ 오프라인(로컬저장)';
-            }
-        }
-
-        function startFirebaseSync(pinCode) {
-            if (!firebaseDb) {
-                updateSyncBadge('offline');
-                return;
-            }
-
-            if (currentDbRef) {
-                currentDbRef.off();
-            }
-
-            const roomPath = `jm_family_${pinCode}`;
-            currentDbRef = firebaseDb.ref(roomPath);
-            updateSyncBadge('syncing', '🔄 클라우드 연결 중...');
-
-            currentDbRef.on('value', (snapshot) => {
-                const remoteData = snapshot.val();
-                if (remoteData && typeof remoteData === 'object') {
-                    isApplyingRemoteUpdate = true;
-                    appState = normalizeLoadedState(remoteData);
-                    try {
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-                    } catch (e) {}
-                    populatePaymentMethodDropdowns();
-                    renderAll();
-                    isApplyingRemoteUpdate = false;
-                    updateSyncBadge('connected', '🟢 클라우드 실시간 연동됨');
-                } else {
-                    // 클라우드가 비어있을 때 로컬에 유효한 데이터가 있다면 클라우드로 최초 업로드
-                    const hasLocalData = (appState.incomes && appState.incomes.length > 0) ||
-                                         (appState.debts && appState.debts.length > 0) ||
-                                         (appState.fixedExpenses && appState.fixedExpenses.length > 0);
-                    if (hasLocalData) {
-                        pushStateToFirebase();
-                    } else {
-                        updateSyncBadge('connected', '🟢 클라우드 연결됨 (초기상태)');
+                // 실시간 수신 리스너 (상대방 기기 변경사항 즉시 반영)
+                dbRef.on('value', (snapshot) => {
+                    isFirebaseConnected = true;
+                    if (badge) {
+                        badge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+                        badge.textContent = '🟢 클라우드 실시간 연동됨';
                     }
-                }
-            }, (error) => {
-                console.error('Firebase 읽기 권한/네트워크 오류:', error);
-                updateSyncBadge('offline', '⚠️ 클라우드 규칙/연결 확인필요');
-            });
-        }
 
-        function pushStateToFirebase() {
-            if (!currentDbRef || isApplyingRemoteUpdate) return;
-            updateSyncBadge('syncing', '🔄 클라우드 저장 중...');
-            const payload = {
-                ...appState,
-                _lastUpdatedAt: new Date().toISOString()
-            };
-            currentDbRef.set(payload)
-                .then(() => {
-                    updateSyncBadge('connected', '🟢 클라우드 실시간 연동됨');
-                })
-                .catch((err) => {
-                    console.error('Firebase 쓰기 오류:', err);
-                    updateSyncBadge('offline', '⚠️ 클라우드 쓰기 실패(로컬보관)');
+                    if (ignoreNextCloudSnapshot) {
+                        ignoreNextCloudSnapshot = false;
+                        return;
+                    }
+
+                    const cloudData = snapshot.val();
+                    if (cloudData && typeof cloudData === 'object') {
+                        appState = normalizeStateShape(cloudData);
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                        populatePaymentMethodDropdowns();
+                        renderAll();
+                    } else {
+                        // 클라우드가 비어 있고 로컬에 데이터가 있다면 클라우드로 최초 업로드
+                        const hasLocalData = appState.incomes.length > 0 || appState.debts.length > 0 || appState.fixedExpenses.length > 0;
+                        if (hasLocalData) {
+                            pushStateToCloud();
+                        }
+                    }
+                }, (error) => {
+                    console.warn('Firebase 권한/연결 경고:', error);
+                    isFirebaseConnected = false;
+                    if (badge) {
+                        badge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
+                        badge.textContent = '⚠️ 로컬저장 모드 (규칙확인)';
+                    }
                 });
-        }
-
-        function forceCloudSync() {
-            const activePin = localStorage.getItem(PIN_STORAGE_KEY) || DEFAULT_PIN;
-            if (!currentDbRef) {
-                startFirebaseSync(activePin);
+            } catch (e) {
+                console.error('Firebase 초기화 실패:', e);
+                if (badge) {
+                    badge.textContent = '⚠️ 오프라인 로컬저장';
+                }
             }
-            pushStateToFirebase();
-            showToast('클라우드 금고와 최신 데이터를 동기화했습니다.');
         }
 
-        // 구버전 JSON 백업 파일과 신버전 상태 구조를 모두 안전하게 호환 변환
-        function normalizeLoadedState(raw) {
-            const base = getZeroDefaultState();
-            const normalized = {
-                ...base,
-                ...raw,
-                incomes: Array.isArray(raw.incomes) ? raw.incomes.map(inc => ({
-                    id: inc.id || ('inc_' + Math.random().toString(36).slice(2, 7)),
-                    name: inc.name || '소득 항목',
-                    owner: inc.owner || '공동',
-                    monthlyAmount: Number(inc.monthlyAmount ?? inc.amount ?? 0),
-                    isBonus: typeof inc.isBonus === 'boolean' ? inc.isBonus : (inc.type === '기타수당')
-                })) : [],
-                assets: Array.isArray(raw.assets) ? raw.assets.map(ast => ({
-                    id: ast.id || ('ast_' + Math.random().toString(36).slice(2, 7)),
-                    name: ast.name || '자산 항목',
-                    owner: ast.owner || '공동',
-                    amount: Number(ast.amount || 0),
-                    isRealEstate: typeof ast.isRealEstate === 'boolean' ? ast.isRealEstate : (ast.category === '부동산' || (ast.name && ast.name.includes('부동산')))
-                })) : [],
-                debts: Array.isArray(raw.debts) ? raw.debts.map(d => {
-                    const bal = Number(d.currentBalance ?? d.balance ?? 0);
-                    return {
-                        id: d.id || ('debt_' + Math.random().toString(36).slice(2, 7)),
-                        name: d.name || '부채 항목',
-                        initialAmount: Number(d.initialAmount ?? bal),
-                        currentBalance: bal,
-                        interestRate: Number(d.interestRate ?? d.rate ?? 0),
-                        monthlyPayment: Number(d.monthlyPayment || 0),
-                        isMortgage: typeof d.isMortgage === 'boolean' ? d.isMortgage : (d.name && d.name.includes('집담보')),
-                        note: d.note || ''
-                    };
-                }) : [],
-                fixedExpenses: Array.isArray(raw.fixedExpenses) ? raw.fixedExpenses.map(fe => ({
-                    id: fe.id || ('fe_' + Math.random().toString(36).slice(2, 7)),
-                    name: fe.name || '고정지출',
-                    owner: fe.owner || '공동',
-                    category: fe.category || '식비/생활비',
-                    method: fe.method || '기본 카드/계좌',
-                    amount: Number(fe.amount || 0)
-                })) : [],
-                savings: Array.isArray(raw.savings) ? raw.savings.map(sav => ({
-                    id: sav.id || ('sav_' + Math.random().toString(36).slice(2, 7)),
-                    name: sav.name || '정기저축',
-                    owner: sav.owner || '공동',
-                    amount: Number(sav.amount || 0)
-                })) : [],
-                accounts: Array.isArray(raw.accounts) ? raw.accounts : [],
-                cards: Array.isArray(raw.cards) ? raw.cards : [],
-                transactions: Array.isArray(raw.transactions) ? raw.transactions : []
-            };
-            return normalized;
+        function pushStateToCloud() {
+            if (!dbRef) return;
+            try {
+                ignoreNextCloudSnapshot = true;
+                dbRef.set(appState).catch(err => {
+                    console.warn('클라우드 동기화 저장 실패:', err);
+                });
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
+        // =========================================================
+        // 천 단위 쉼표(,) 실시간 입력·포맷팅 유틸리티
+        // =========================================================
+        function formatWithCommas(val) {
+            const num = Math.round(Number(val) || 0);
+            return num.toLocaleString('ko-KR');
+        }
+
+        function parseCommaNumber(str) {
+            if (typeof str === 'number') return Math.round(str);
+            const cleaned = String(str || '').replace(/[^\d]/g, '');
+            return cleaned ? parseInt(cleaned, 10) : 0;
+        }
+
+        // 입력칸 타이핑 시 쉼표 실시간 포맷팅 (단순 입력용)
+        function formatInputWithCommasOnly(inputEl) {
+            const num = parseCommaNumber(inputEl.value);
+            inputEl.value = num > 0 ? num.toLocaleString('ko-KR') : (inputEl.value === '' ? '' : '0');
+        }
+
+        // 상태 배열 내 특정 필드를 쉼표 포맷팅과 함께 즉시 업데이트 (커서 위치 유지)
+        function handleFormattedStateInput(inputEl, listKey, index, fieldKey, liveRecalc = false) {
+            const rawDigits = inputEl.value.replace(/[^\d]/g, '');
+            const numericVal = rawDigits ? parseInt(rawDigits, 10) : 0;
+            const formatted = numericVal.toLocaleString('ko-KR');
+
+            // 입력창 표시값을 쉼표 포함된 형태로 즉시 갱신
+            inputEl.value = formatted;
+
+            if (appState[listKey] && appState[listKey][index]) {
+                appState[listKey][index][fieldKey] = numericVal;
+                saveState();
+                if (liveRecalc) {
+                    updateSummaryTotalsOnly();
+                }
+            }
+        }
+
+        // 입력 완료(blur/change) 시 전체 대시보드 및 차트 재계산
+        function commitFormattedStateChange() {
+            saveState();
+            renderAll();
+        }
+
+        // 타이핑 도중 하단 합계 숫자만 즉시 갱신 (입력창 포커스 유지)
+        function updateSummaryTotalsOnly() {
+            const regSum = appState.incomes.filter(i => !i.isBonus).reduce((s, i) => s + Number(i.monthlyAmount || 0), 0);
+            const allIncSum = appState.incomes.reduce((s, i) => s + Number(i.monthlyAmount || 0), 0);
+            const elReg = document.getElementById('setupRegularIncomeTotal');
+            const elAll = document.getElementById('setupTotalIncomeWithBonus');
+            if (elReg) elReg.textContent = formatKRW(regSum);
+            if (elAll) elAll.textContent = formatKRW(allIncSum);
+
+            const totalAst = appState.assets.reduce((s, a) => s + Number(a.amount || 0), 0);
+            const elAst = document.getElementById('setupTotalAssets');
+            if (elAst) elAst.textContent = formatKRW(totalAst);
+
+            const feTotal = appState.fixedExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+            const elFe = document.getElementById('setupFixedExpenseTotal');
+            if (elFe) elFe.textContent = formatKRW(feTotal);
+
+            const savTotal = appState.savings.reduce((s, v) => s + Number(v.amount || 0), 0);
+            const elSav = document.getElementById('setupSavingsTotal');
+            if (elSav) elSav.textContent = formatKRW(savTotal);
         }
 
         // =========================================================
@@ -872,10 +856,8 @@
         function initPinLock() {
             const isUnlocked = sessionStorage.getItem(SESSION_UNLOCK_KEY) === 'true';
             const overlay = document.getElementById('pinLockOverlay');
-            const savedPin = localStorage.getItem(PIN_STORAGE_KEY) || DEFAULT_PIN;
             if (isUnlocked) {
                 overlay.classList.add('hidden');
-                startFirebaseSync(savedPin);
             } else {
                 overlay.classList.remove('hidden');
                 currentPinEntry = '';
@@ -924,8 +906,7 @@
             if (currentPinEntry === savedPin) {
                 sessionStorage.setItem(SESSION_UNLOCK_KEY, 'true');
                 document.getElementById('pinLockOverlay').classList.add('hidden');
-                startFirebaseSync(savedPin);
-                showToast('잠금이 해제되고 클라우드와 동기화됩니다.');
+                showToast('잠금이 해제되었습니다.');
             } else {
                 document.getElementById('pinErrorMsg').textContent = '비밀번호가 일치하지 않습니다. (초기값: 0305)';
                 currentPinEntry = '';
@@ -935,10 +916,6 @@
 
         function lockAppNow() {
             sessionStorage.removeItem(SESSION_UNLOCK_KEY);
-            if (currentDbRef) {
-                currentDbRef.off();
-                currentDbRef = null;
-            }
             currentPinEntry = '';
             updatePinDots();
             document.getElementById('pinErrorMsg').textContent = '';
@@ -953,13 +930,11 @@
             }
             localStorage.setItem(PIN_STORAGE_KEY, val);
             document.getElementById('newPinInput').value = '';
-            startFirebaseSync(val);
-            pushStateToFirebase();
-            showToast(`PIN이 ${val}로 변경되었습니다. Firebase 규칙의 방 이름(jm_family_${val})도 함께 맞춰주세요.`);
+            showToast('새 PIN 비밀번호가 저장되었습니다.');
         }
 
         // =========================================================
-        // 초기 0원 상태 생성기 (외부 공개 코드 프라이버시 보호용)
+        // 초기 0원 상태 생성기 & 데이터 정규화 (jm_backup.json 호환 포함)
         // =========================================================
         function getZeroDefaultState() {
             return {
@@ -977,6 +952,53 @@
             };
         }
 
+        // 백업 JSON 필드명 차이(예: balance vs currentBalance, amount vs monthlyAmount) 자동 보정
+        function normalizeStateShape(raw) {
+            const base = getZeroDefaultState();
+            const merged = { ...base, ...raw };
+
+            merged.incomes = Array.isArray(merged.incomes) ? merged.incomes.map(i => ({
+                ...i,
+                monthlyAmount: Number(i.monthlyAmount ?? i.amount ?? 0),
+                isBonus: i.isBonus !== undefined ? Boolean(i.isBonus) : (i.type === '기타수당')
+            })) : [];
+
+            merged.assets = Array.isArray(merged.assets) ? merged.assets.map(a => ({
+                ...a,
+                amount: Number(a.amount || 0),
+                isRealEstate: a.isRealEstate !== undefined ? Boolean(a.isRealEstate) : (a.category === '부동산' || (a.name && a.name.includes('부동산')))
+            })) : [];
+
+            merged.debts = Array.isArray(merged.debts) ? merged.debts.map(d => {
+                const curBal = Number(d.currentBalance ?? d.balance ?? 0);
+                return {
+                    ...d,
+                    initialAmount: Number(d.initialAmount ?? curBal),
+                    currentBalance: curBal,
+                    interestRate: Number(d.interestRate ?? d.rate ?? 0),
+                    monthlyPayment: Number(d.monthlyPayment ?? 0),
+                    isMortgage: d.isMortgage !== undefined ? Boolean(d.isMortgage) : (d.name && d.name.includes('집담보'))
+                };
+            }) : [];
+
+            merged.fixedExpenses = Array.isArray(merged.fixedExpenses) ? merged.fixedExpenses.map(f => ({
+                ...f,
+                amount: Number(f.amount || 0)
+            })) : [];
+
+            merged.savings = Array.isArray(merged.savings) ? merged.savings.map(s => ({
+                ...s,
+                amount: Number(s.amount || 0)
+            })) : [];
+
+            merged.accounts = Array.isArray(merged.accounts) ? merged.accounts : [];
+            merged.cards = Array.isArray(merged.cards) ? merged.cards : [];
+            merged.transactions = Array.isArray(merged.transactions) ? merged.transactions : [];
+            merged.surplusAllocationPercent = Number(merged.surplusAllocationPercent ?? merged.extraDebtRatio ?? 0);
+
+            return merged;
+        }
+
         let appState = loadState();
         let parsedPdfBuffer = [];
         let charts = { owner: null, category: null, trend: null };
@@ -985,7 +1007,7 @@
             try {
                 const raw = localStorage.getItem(STORAGE_KEY);
                 if (raw) {
-                    return normalizeLoadedState(JSON.parse(raw));
+                    return normalizeStateShape(JSON.parse(raw));
                 }
             } catch (e) {
                 console.error('로컬스토리지 로드 실패:', e);
@@ -996,17 +1018,16 @@
         function saveState() {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-                if (!isApplyingRemoteUpdate) {
-                    pushStateToFirebase();
-                }
+                pushStateToCloud();
             } catch (e) {
-                showToast('저장 공간이 부족하여 데이터를 저장하지 못했습니다.', 'error');
+                showToast('저장 중 오류가 발생했습니다.', 'error');
             }
         }
 
         // 초기 실행
         window.onload = function () {
             initPinLock();
+            initFirebaseSync();
 
             const currentMonth = new Date().toISOString().slice(0, 7);
             document.getElementById('overviewMonthSelector').value = currentMonth;
@@ -1242,7 +1263,6 @@
 
             document.getElementById('headerBaseDate').textContent = appState.baseDate || new Date().toISOString().slice(0, 10);
 
-            // 빈 데이터 안내 배너 표시 여부
             const isCompletelyEmpty = appState.incomes.length === 0 && appState.debts.length === 0 && appState.fixedExpenses.length === 0;
             const guideBanner = document.getElementById('emptyDataGuideBanner');
             if (isCompletelyEmpty) {
@@ -1749,7 +1769,7 @@
             const method = document.getElementById('manualMethod').value;
             const category = document.getElementById('manualCategory').value;
             const desc = document.getElementById('manualDesc').value.trim();
-            const amount = Number(document.getElementById('manualAmount').value);
+            const amount = parseCommaNumber(document.getElementById('manualAmount').value);
 
             if (!desc || amount <= 0) return;
 
@@ -1844,93 +1864,96 @@
         }
 
         // =========================================================
-        // TAB 3: 소득 · 고정지출 · 계좌/카드 설정 (모바일 2줄 반응형 구조)
+        // TAB 3: 소득 · 고정지출 · 계좌/카드 설정 (천 단위 쉼표 + 원 단위 적용)
         // =========================================================
         function renderBudgetSettings() {
-            // 1. 소득 (모바일: 첫째줄 항목명 전체폭 / 둘째줄 구분 + 금액 + 삭제)
+            // 1. 소득 (모바일 2줄 반응형 + 천 단위 쉼표 표시)
             const incContainer = document.getElementById('incomeListContainer');
             incContainer.innerHTML = appState.incomes.length === 0
                 ? '<p class="text-xs text-slate-400 py-4 text-center">등록된 소득 항목이 없습니다. [+ 소득 추가] 또는 [불러오기]를 이용하세요.</p>'
                 : appState.incomes.map((inc, idx) => `
                 <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
-                    <input type="text" value="${inc.name}" onchange="appState.incomes[${idx}].name = this.value; saveState(); renderAll();" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                    <input type="text" value="${inc.name}" onchange="appState.incomes[${idx}].name = this.value; commitFormattedStateChange();" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
                     <div class="flex items-center gap-1.5 w-full sm:w-auto">
-                        <select onchange="appState.incomes[${idx}].isBonus = (this.value === 'true'); saveState(); renderAll();" class="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 shrink-0">
+                        <select onchange="appState.incomes[${idx}].isBonus = (this.value === 'true'); commitFormattedStateChange();" class="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 shrink-0">
                             <option value="false" ${!inc.isBonus ? 'selected' : ''}>정기월급</option>
                             <option value="true" ${inc.isBonus ? 'selected' : ''}>기타수당</option>
                         </select>
-                        <input type="number" value="${inc.monthlyAmount}" onchange="appState.incomes[${idx}].monthlyAmount = Number(this.value); saveState(); renderAll();" class="flex-1 sm:w-28 text-right text-xs font-bold bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-                        <button onclick="appState.incomes.splice(${idx}, 1); saveState(); renderAll();" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs shrink-0">✕</button>
+                        <div class="relative flex-1 sm:w-32">
+                            <input type="text" inputmode="numeric" value="${formatWithCommas(inc.monthlyAmount)}" oninput="handleFormattedStateInput(this, 'incomes', ${idx}, 'monthlyAmount', true)" onchange="commitFormattedStateChange()" class="money-input w-full text-right text-xs font-bold bg-white border border-slate-200 rounded-lg pl-2.5 pr-6 py-1.5">
+                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                        </div>
+                        <button onclick="appState.incomes.splice(${idx}, 1); commitFormattedStateChange();" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs shrink-0">✕</button>
                     </div>
                 </div>
             `).join('');
 
-            const regSum = appState.incomes.filter(i => !i.isBonus).reduce((s, i) => s + Number(i.monthlyAmount || 0), 0);
-            const allIncSum = appState.incomes.reduce((s, i) => s + Number(i.monthlyAmount || 0), 0);
-            document.getElementById('setupRegularIncomeTotal').textContent = formatKRW(regSum);
-            document.getElementById('setupTotalIncomeWithBonus').textContent = formatKRW(allIncSum);
-
-            // 2. 자산 (모바일 2줄 반응형)
+            // 2. 자산 (모바일 2줄 반응형 + 천 단위 쉼표 표시)
             const astContainer = document.getElementById('assetListContainer');
             astContainer.innerHTML = appState.assets.length === 0
                 ? '<p class="text-xs text-slate-400 py-4 text-center">등록된 자산 항목이 없습니다.</p>'
                 : appState.assets.map((ast, idx) => `
                 <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
-                    <input type="text" value="${ast.name}" onchange="appState.assets[${idx}].name = this.value; saveState(); renderAll();" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                    <input type="text" value="${ast.name}" onchange="appState.assets[${idx}].name = this.value; commitFormattedStateChange();" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
                     <div class="flex items-center gap-1.5 w-full sm:w-auto">
-                        <input type="number" value="${ast.amount}" onchange="appState.assets[${idx}].amount = Number(this.value); saveState(); renderAll();" class="flex-1 sm:w-32 text-right text-xs font-bold bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-                        <button onclick="appState.assets.splice(${idx}, 1); saveState(); renderAll();" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs shrink-0">✕</button>
+                        <div class="relative flex-1 sm:w-36">
+                            <input type="text" inputmode="numeric" value="${formatWithCommas(ast.amount)}" oninput="handleFormattedStateInput(this, 'assets', ${idx}, 'amount', true)" onchange="commitFormattedStateChange()" class="money-input w-full text-right text-xs font-bold bg-white border border-slate-200 rounded-lg pl-2.5 pr-6 py-1.5">
+                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                        </div>
+                        <button onclick="appState.assets.splice(${idx}, 1); commitFormattedStateChange();" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs shrink-0">✕</button>
                     </div>
                 </div>
             `).join('');
-            const totalAst = appState.assets.reduce((s, a) => s + Number(a.amount || 0), 0);
-            document.getElementById('setupTotalAssets').textContent = formatKRW(totalAst);
 
-            // 3. 고정지출 (모바일 2줄 반응형)
+            // 3. 고정지출 (모바일 2줄 반응형 + 천 단위 쉼표 표시)
             const feContainer = document.getElementById('fixedExpenseListContainer');
             const categories = ['식비/생활비', '차량/주유', '주거/관리비', '통신/구독', '보험/의료', '반려동물', '경조사/선물', '기타/용돈'];
             feContainer.innerHTML = appState.fixedExpenses.length === 0
                 ? '<p class="text-xs text-slate-400 py-4 text-center">등록된 고정지출이 없습니다.</p>'
                 : appState.fixedExpenses.map((fe, idx) => `
                 <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-1.5">
-                    <input type="text" value="${fe.name}" onchange="appState.fixedExpenses[${idx}].name = this.value; saveState(); renderAll();" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                    <input type="text" value="${fe.name}" onchange="appState.fixedExpenses[${idx}].name = this.value; commitFormattedStateChange();" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
                     <div class="flex items-center gap-1.5 w-full sm:w-auto">
-                        <select onchange="appState.fixedExpenses[${idx}].owner = this.value; saveState(); renderAll();" class="text-xs bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 shrink-0">
+                        <select onchange="appState.fixedExpenses[${idx}].owner = this.value; commitFormattedStateChange();" class="text-xs bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 shrink-0">
                             <option value="지현" ${fe.owner === '지현' ? 'selected' : ''}>지현</option>
                             <option value="민주" ${fe.owner === '민주' ? 'selected' : ''}>민주</option>
                             <option value="공동" ${fe.owner === '공동' ? 'selected' : ''}>공동</option>
                         </select>
-                        <select onchange="appState.fixedExpenses[${idx}].category = this.value; saveState(); renderAll();" class="text-xs bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 shrink-0 max-w-[100px]">
+                        <select onchange="appState.fixedExpenses[${idx}].category = this.value; commitFormattedStateChange();" class="text-xs bg-white border border-slate-200 rounded-lg px-1.5 py-1.5 shrink-0 max-w-[100px]">
                             ${categories.map(c => `<option value="${c}" ${fe.category === c ? 'selected' : ''}>${c}</option>`).join('')}
                         </select>
-                        <input type="number" value="${fe.amount}" onchange="appState.fixedExpenses[${idx}].amount = Number(this.value); saveState(); renderAll();" class="flex-1 sm:w-24 text-right text-xs font-bold bg-white border border-slate-200 rounded-lg px-2 py-1.5 min-w-[80px]">
-                        <button onclick="appState.fixedExpenses.splice(${idx}, 1); saveState(); renderAll();" class="text-slate-400 hover:text-rose-600 p-1 text-xs shrink-0">✕</button>
+                        <div class="relative flex-1 sm:w-28 min-w-[96px]">
+                            <input type="text" inputmode="numeric" value="${formatWithCommas(fe.amount)}" oninput="handleFormattedStateInput(this, 'fixedExpenses', ${idx}, 'amount', true)" onchange="commitFormattedStateChange()" class="money-input w-full text-right text-xs font-bold bg-white border border-slate-200 rounded-lg pl-2 pr-6 py-1.5">
+                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                        </div>
+                        <button onclick="appState.fixedExpenses.splice(${idx}, 1); commitFormattedStateChange();" class="text-slate-400 hover:text-rose-600 p-1 text-xs shrink-0">✕</button>
                     </div>
                 </div>
             `).join('');
-            const feTotal = appState.fixedExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-            document.getElementById('setupFixedExpenseTotal').textContent = formatKRW(feTotal);
 
-            // 4. 정기 저축 (모바일 2줄 반응형)
+            // 4. 정기 저축 (모바일 2줄 반응형 + 천 단위 쉼표 표시)
             const savContainer = document.getElementById('savingsListContainer');
             savContainer.innerHTML = appState.savings.length === 0
                 ? '<p class="text-xs text-slate-400 py-4 text-center">등록된 정기저축 항목이 없습니다.</p>'
                 : appState.savings.map((sav, idx) => `
                 <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
-                    <input type="text" value="${sav.name}" onchange="appState.savings[${idx}].name = this.value; saveState(); renderAll();" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
+                    <input type="text" value="${sav.name}" onchange="appState.savings[${idx}].name = this.value; commitFormattedStateChange();" class="w-full sm:flex-1 text-xs font-medium bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
                     <div class="flex items-center gap-1.5 w-full sm:w-auto">
-                        <select onchange="appState.savings[${idx}].owner = this.value; saveState(); renderAll();" class="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 shrink-0">
+                        <select onchange="appState.savings[${idx}].owner = this.value; commitFormattedStateChange();" class="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 shrink-0">
                             <option value="지현" ${sav.owner === '지현' ? 'selected' : ''}>지현</option>
                             <option value="민주" ${sav.owner === '민주' ? 'selected' : ''}>민주</option>
                             <option value="공동" ${sav.owner === '공동' ? 'selected' : ''}>공동</option>
                         </select>
-                        <input type="number" value="${sav.amount}" onchange="appState.savings[${idx}].amount = Number(this.value); saveState(); renderAll();" class="flex-1 sm:w-28 text-right text-xs font-bold bg-white border border-slate-200 rounded-lg px-2.5 py-1.5">
-                        <button onclick="appState.savings.splice(${idx}, 1); saveState(); renderAll();" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs shrink-0">✕</button>
+                        <div class="relative flex-1 sm:w-32">
+                            <input type="text" inputmode="numeric" value="${formatWithCommas(sav.amount)}" oninput="handleFormattedStateInput(this, 'savings', ${idx}, 'amount', true)" onchange="commitFormattedStateChange()" class="money-input w-full text-right text-xs font-bold bg-white border border-slate-200 rounded-lg pl-2.5 pr-6 py-1.5">
+                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                        </div>
+                        <button onclick="appState.savings.splice(${idx}, 1); commitFormattedStateChange();" class="text-slate-400 hover:text-rose-600 p-1.5 text-xs shrink-0">✕</button>
                     </div>
                 </div>
             `).join('');
-            const savTotal = appState.savings.reduce((s, v) => s + Number(v.amount || 0), 0);
-            document.getElementById('setupSavingsTotal').textContent = formatKRW(savTotal);
+
+            updateSummaryTotalsOnly();
 
             // 5. 계좌 목록
             document.getElementById('accountListContainer').innerHTML = appState.accounts.length === 0
@@ -1994,7 +2017,7 @@
         }
 
         // =========================================================
-        // TAB 4: 부채 탕감 실시간 시뮬레이터
+        // TAB 4: 부채 탕감 실시간 시뮬레이터 (천 단위 쉼표 입력 지원)
         // =========================================================
         function updateSurplusSlider(val) {
             appState.surplusAllocationPercent = Number(val);
@@ -2040,16 +2063,22 @@
 
                                 <div class="space-y-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 text-xs">
                                     <div class="flex items-center justify-between gap-2">
-                                        <label class="font-semibold text-slate-600 shrink-0">현재 잔액(원):</label>
-                                        <input type="number" value="${debt.currentBalance}" onchange="updateDebtField(${idx}, 'currentBalance', this.value)" class="w-32 sm:w-36 text-right font-bold text-slate-900 bg-white border border-slate-300 rounded px-2 py-1">
+                                        <label class="font-semibold text-slate-600 shrink-0">현재 잔액:</label>
+                                        <div class="relative w-36 sm:w-40">
+                                            <input type="text" inputmode="numeric" value="${formatWithCommas(debt.currentBalance)}" oninput="handleFormattedStateInput(this, 'debts', ${idx}, 'currentBalance', false)" onchange="commitFormattedStateChange()" class="money-input w-full text-right font-bold text-slate-900 bg-white border border-slate-300 rounded pl-2 pr-6 py-1">
+                                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                                        </div>
                                     </div>
                                     <div class="flex items-center justify-between gap-2">
                                         <label class="font-semibold text-slate-600 shrink-0">연 이자율 (%):</label>
                                         <input type="number" step="0.1" value="${debt.interestRate}" onchange="updateDebtField(${idx}, 'interestRate', this.value)" class="w-24 text-right font-semibold text-slate-800 bg-white border border-slate-300 rounded px-2 py-1">
                                     </div>
                                     <div class="flex items-center justify-between gap-2">
-                                        <label class="font-semibold text-slate-600 shrink-0">월 기본납입(원):</label>
-                                        <input type="number" value="${debt.monthlyPayment}" onchange="updateDebtField(${idx}, 'monthlyPayment', this.value)" class="w-32 sm:w-36 text-right font-bold text-indigo-700 bg-white border border-slate-300 rounded px-2 py-1">
+                                        <label class="font-semibold text-slate-600 shrink-0">월 기본납입:</label>
+                                        <div class="relative w-36 sm:w-40">
+                                            <input type="text" inputmode="numeric" value="${formatWithCommas(debt.monthlyPayment)}" oninput="handleFormattedStateInput(this, 'debts', ${idx}, 'monthlyPayment', false)" onchange="commitFormattedStateChange()" class="money-input w-full text-right font-bold text-indigo-700 bg-white border border-slate-300 rounded pl-2 pr-6 py-1">
+                                            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">원</span>
+                                        </div>
                                     </div>
                                     ${sim.extraMonthly > 0 ? `
                                     <div class="flex items-center justify-between text-emerald-700 font-bold pt-1 border-t border-slate-200">
@@ -2141,11 +2170,11 @@
                     if (!Array.isArray(parsed.incomes) || !Array.isArray(parsed.debts)) {
                         throw new Error('올바른 가계부 백업 파일이 아닙니다.');
                     }
-                    appState = normalizeLoadedState(parsed);
+                    appState = normalizeStateShape(parsed);
                     saveState();
                     populatePaymentMethodDropdowns();
                     renderAll();
-                    showToast('재무 데이터가 복원되고 클라우드에도 즉시 업로드되었습니다!');
+                    showToast('기존 재무 데이터가 성공적으로 복원 및 클라우드 동기화되었습니다!');
                 } catch (err) {
                     showToast('불러오기 실패: ' + err.message, 'error');
                 }
@@ -2156,7 +2185,7 @@
 
         function confirmResetData() {
             document.getElementById('modalTitle').textContent = '모든 데이터를 0원으로 초기화할까요?';
-            document.getElementById('modalMessage').textContent = '현재 브라우저에 저장된 모든 내역이 비워지고 0원 상태로 초기화됩니다. 필요한 경우 먼저 [백업저장]을 눌러주세요.';
+            document.getElementById('modalMessage').textContent = '현재 기기와 연동된 클라우드 데이터가 비워지고 0원 상태로 초기화됩니다. 필요한 경우 먼저 [백업저장]을 눌러주세요.';
             const btn = document.getElementById('modalConfirmBtn');
             btn.onclick = () => {
                 appState = getZeroDefaultState();
